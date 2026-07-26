@@ -1,0 +1,17 @@
+# Cache do Python (gerado automaticamente a cada execução)
+__pycache__/
+*.pyc
+
+# Configuração local do Claude Code — não faz parte do app
+.claude/
+
+# PDFs/Excel gerados pelo próprio app (regeneráveis a qualquer momento pela tela)
+orcamento_app/data/exportados/
+
+# Ambiente virtual, se vier a criar um
+.venv/
+venv/
+
+# Lixo de sistema operacional
+Thumbs.db
+desktop.ini
