@@ -3,11 +3,15 @@ Tela "Projeção de Fechamento 2026" (despesa 6.3) — ver Orcamento2026.md.
 Mostra a última projeção persistida (projecao_resultado); recalcula sob demanda
 ou automaticamente após salvar parâmetros/configurações de conta.
 """
+from pathlib import Path
+from datetime import datetime
+import traceback
+
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 
-from core import exportar, projecao_engine as eng
+from core import exportar, projecao_engine as eng, agente_ia, drive_sync
 from core.config import ANO_ORCAMENTO, CONSELHO_PADRAO, DADOS_REAIS_DB
 from core.formatos import fmt_num_br, parse_valor_br, MESES_PT
 from core.tabela_html import gerar_html_fechamento, gerar_html_curva_mensal
@@ -28,6 +32,7 @@ def _recalcular():
     with st.spinner("Recalculando projeção..."):
         eng.projetar_fechamento(conselho=CONSELHO_PADRAO, ano=ANO_ORCAMENTO,
                                 persistir=True, ramo=ramo)
+        drive_sync.enviar_arquivo(DADOS_REAIS_DB)
 
 
 def _fmt_mes(m):
@@ -91,7 +96,7 @@ so_divergentes = c_f1.checkbox(f"Só divergências M3×M2 > {eng.LIMIAR_DIVERGEN
 so_baixa = c_f2.checkbox("Só confiança baixa")
 
 df_view = df.copy()
-df_view["material"] = df_view[["proj_fechamento", "proj_m2"]].abs().max(axis=1) > 50_000
+df_view["material"] = df_view[["proj_fechamento", "proj_m2"]].abs().max(axis=1) > eng.LIMIAR_MATERIALIDADE
 if so_divergentes:
     df_view = df_view[(df_view["divergencia_pct"] > eng.LIMIAR_DIVERGENCIA) & df_view["material"]]
 if so_baixa:
@@ -224,7 +229,7 @@ st.divider()
 
 # --- Exportação ---
 df_mensal_exp = df_mensal if not df_mensal.empty else None
-c_e1, c_e2 = st.columns(2)
+c_e1, c_e2, c_e3 = st.columns(3)
 with c_e1:
     if st.button("📊 Exportar Excel (Resumo + Detalhe com memória)", use_container_width=True):
         caminho = exportar.gerar_excel_fechamento(df, mes_corte, ANO_ORCAMENTO, ramo=ramo,
@@ -242,6 +247,55 @@ with c_e2:
             st.download_button("⬇️ Baixar PDF gerado", f, file_name=caminho.name,
                                mime="application/pdf", use_container_width=True)
         st.success(f"PDF gerado em: {caminho}")
+with c_e3:
+    # A análise de IA sempre cobre despesa + receita juntas (para falar do
+    # resultado orçamentário consolidado), reaproveitando df/df_outro já
+    # carregados acima — sem nova consulta ao banco.
+    df_despesa_ia = df if ramo == eng.RAMO_DESPESA else df_outro
+    df_receita_ia = df if ramo == eng.RAMO_RECEITA else df_outro
+    ambos_prontos = not df_despesa_ia.empty and not df_receita_ia.empty
+    gerar_ia = st.button("🤖 Gerar Análise com IA", use_container_width=True,
+                         disabled=not ambos_prontos)
+    if not ambos_prontos:
+        faltando = [r for r, d in [("Despesa (6.3)", df_despesa_ia),
+                                   ("Receita (6.2)", df_receita_ia)] if d.empty]
+        st.caption(f"⚠️ Gere a projeção de {', '.join(faltando)} antes de usar a análise de IA.")
+
+if gerar_ia:
+    with st.spinner("Consultando IA — pode levar até 1 minuto..."):
+        try:
+            texto_ia = agente_ia.gerar_analise_ia(df_despesa_ia, df_receita_ia, mes_corte, ANO_ORCAMENTO)
+            caminho_ia = exportar.gerar_md_analise_ia(texto_ia, ANO_ORCAMENTO)
+            st.session_state["analise_ia"] = {
+                "texto": texto_ia, "caminho": str(caminho_ia), "gerado_em": datetime.now(),
+            }
+        except agente_ia.AgenteIAError as e:
+            st.error(f"Não foi possível gerar a análise de IA: {e}")
+        except Exception:
+            print(f"[agente_ia] erro inesperado ao gerar análise: {traceback.format_exc()}")
+            st.error("Erro inesperado ao gerar a análise de IA. Verifique o log do servidor.")
+
+if "analise_ia" in st.session_state:
+    st.divider()
+    st.subheader("🤖 Análise de IA — Projeção e Resultado Orçamentário 2026")
+    st.warning("Conteúdo gerado por inteligência artificial — **revise e valide antes de "
+              "usar em qualquer decisão orçamentária**.")
+    st.caption(f"Gerada em {st.session_state['analise_ia']['gerado_em']:%d/%m/%Y %H:%M}. "
+              "Se você recalculou a projeção ou alterou configurações depois disso, "
+              "gere a análise novamente para refletir os novos números.")
+    # Escapa "$" antes de renderizar: st.markdown trata pares de "$" como
+    # delimitadores de fórmula LaTeX, o que embaralha o texto sempre que há
+    # duas ou mais menções a "R$" na mesma sequência de texto corrido. O
+    # arquivo salvo em disco (download) mantém o texto original, sem escape.
+    st.markdown(st.session_state["analise_ia"]["texto"].replace("$", r"\$"))
+    caminho_ia = Path(st.session_state["analise_ia"]["caminho"])
+    if caminho_ia.exists():
+        with open(caminho_ia, "rb") as f:
+            st.download_button("⬇️ Baixar relatório de IA (.md)", f, file_name=caminho_ia.name,
+                               mime="text/markdown", use_container_width=True)
+    if st.button("🗑️ Limpar análise de IA da tela"):
+        del st.session_state["analise_ia"]
+        st.rerun()
 
 st.divider()
 

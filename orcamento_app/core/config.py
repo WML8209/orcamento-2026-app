@@ -47,3 +47,10 @@ CODIGOS_DIR = Path(os.environ.get(
 DADOS_REAIS_DB = DATA_DIR / "dados_reais.db"
 
 CONSELHO_PADRAO = "CFC"
+
+# --- Agente de IA (análise da projeção via OpenRouter) ---
+# Chave obrigatória apenas para quem for usar o botão "Gerar Análise com IA"
+# (validada em tempo de uso por core/agente_ia.py, não aqui).
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
+OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"

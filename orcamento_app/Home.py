@@ -51,6 +51,21 @@ Excel/PDF.
         st.caption("🔄 Sincronização com o Google Drive **ativa** — os arquivos enviados "
                    "abaixo são salvos na pasta Data do Drive e restaurados automaticamente "
                    "a cada reinicialização do servidor.")
+        col_texto, col_botao = st.columns([3, 1])
+        with col_texto:
+            st.caption("Rodou `importar_dados.py` ou trocou um arquivo direto na pasta "
+                       "`data/` local? Use o botão para reenviar o que está no disco agora "
+                       "para o Drive, sem precisar reenviar pela caixa de upload.")
+        with col_botao:
+            if st.button("📤 Atualizar Google Drive agora", use_container_width=True):
+                from core.config import (BASES_XLSX, ORCAMENTO_HISTORICO_XLSX,
+                                         ORCAMENTO_2026_DB, DADOS_REAIS_DB)
+                arquivos = [BASES_XLSX, ORCAMENTO_HISTORICO_XLSX, ORCAMENTO_2026_DB, DADOS_REAIS_DB]
+                with st.spinner("Enviando arquivos para o Google Drive..."):
+                    for arquivo in arquivos:
+                        if arquivo.exists():
+                            drive_sync.enviar_arquivo(arquivo)
+                st.success("Arquivos locais enviados para a pasta Data do Google Drive.")
     else:
         st.caption("Envie aqui os arquivos necessários para o app funcionar — em especial "
                    "depois de publicar na nuvem, onde os arquivos enviados por upload não "

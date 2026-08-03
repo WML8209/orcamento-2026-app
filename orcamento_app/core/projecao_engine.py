@@ -41,6 +41,7 @@ K_MESES_RUNRATE = 3                    # run-rate de contratos: média dos últi
 SHARE_ACUM_MINIMO = 0.20               # abaixo disso o método da razão é instável -> fallback aditivo
 TAXA_EXECUCAO_FALLBACK = 0.90          # conta sem histórico e sem YTD: orçamento x esta taxa
 LIMIAR_DIVERGENCIA = 0.10              # 10% entre M3 e M2 acende alerta
+LIMIAR_MATERIALIDADE = 50_000          # abaixo disso, divergência não é destacada como alerta
 DIA_MES_COMPLETO = 28                  # data_max com dia >= 28 indica mês contábil completo
 
 SCHEMA = """

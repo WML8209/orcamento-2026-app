@@ -49,6 +49,17 @@ def gerar_pdf_memoria(indice: int, projeto: str, subprojeto: str, descricao: str
     return caminho
 
 
+def gerar_md_analise_ia(texto: str, ano: int) -> Path:
+    """Salva o relatório de análise de IA (core.agente_ia) como Markdown em
+    EXPORT_DIR, no mesmo padrão dos demais exports do Fechamento. Usa segundos
+    no timestamp (diferente dos demais) por ser plausível gerar mais de uma
+    análise no mesmo minuto ao ajustar prompts/modelos."""
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    caminho = EXPORT_DIR / f"AnaliseIA_Fechamento{ano}_{datetime.now():%Y%m%d_%H%M%S}.md"
+    caminho.write_text(texto, encoding="utf-8")
+    return caminho
+
+
 def gerar_pdf_resumo(df_resumo: pd.DataFrame, coordenadoria: str, ano: int) -> Path:
     """df_resumo esperado com colunas: Projeto, Conta, Descricao, Total"""
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -241,7 +252,8 @@ def gerar_pdf_fechamento(df: pd.DataFrame, mes_corte: int, ano: int,
                          df_mensal: pd.DataFrame | None = None) -> Path:
     """PDF (A4 paisagem): resumo por natureza, curva mensal (se df_mensal),
     detalhe por conta e alertas."""
-    from core.projecao_engine import LIMIAR_DIVERGENCIA, RAMOS_ROTULOS, NATUREZAS_ROTULOS
+    from core.projecao_engine import (LIMIAR_DIVERGENCIA, LIMIAR_MATERIALIDADE,
+                                      RAMOS_ROTULOS, NATUREZAS_ROTULOS)
 
     rotulo_ramo = RAMOS_ROTULOS.get(ramo, ramo)
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -312,7 +324,7 @@ def gerar_pdf_fechamento(df: pd.DataFrame, mes_corte: int, ano: int,
                   Spacer(1, 0.5 * cm)]
 
     # --- Alertas ---
-    det["material"] = det[["proj_fechamento", "proj_m2"]].abs().max(axis=1) > 50_000
+    det["material"] = det[["proj_fechamento", "proj_m2"]].abs().max(axis=1) > LIMIAR_MATERIALIDADE
     divergentes = det[(det["divergencia_pct"] > LIMIAR_DIVERGENCIA) & det["material"]]
     baixa = det[(det["confianca"] == "baixa") & (det["orcamento"] > 0)]
     if not divergentes.empty or not baixa.empty:
