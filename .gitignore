@@ -15,3 +15,10 @@ venv/
 # Lixo de sistema operacional
 Thumbs.db
 desktop.ini
+
+# Chave de API (OpenRouter) — nunca deve ser commitada
+Chave.txt
+
+# Credenciais do Google Drive (OAuth2) — nunca deve ser commitado
+# (ver orcamento_app/CONFIGURAR_GOOGLE_DRIVE.md)
+**/.streamlit/secrets.toml

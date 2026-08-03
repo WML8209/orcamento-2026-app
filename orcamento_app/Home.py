@@ -1,7 +1,8 @@
 import streamlit as st
-from core import db
+from core import db, drive_sync
 
 st.set_page_config(page_title="Ferramenta de Projeção de Orçamento 2026", page_icon="📊", layout="wide")
+drive_sync.sincronizar_inicial()
 db.init_db()
 
 
@@ -27,6 +28,7 @@ def _upload_arquivo(label: str, path, tipos: list[str], chave: str, ajuda: str =
         if st.session_state.get(marcador) != assinatura:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(arquivo.getvalue())
+            drive_sync.enviar_arquivo(path)
             st.session_state[marcador] = assinatura
             st.success(f"{label} atualizado com sucesso.")
             st.rerun()
@@ -45,9 +47,15 @@ Excel/PDF.
 """)
     st.divider()
     st.subheader("Status dos arquivos de dados")
-    st.caption("Envie aqui os arquivos necessários para o app funcionar — em especial "
-               "depois de publicar na nuvem, onde os arquivos enviados por upload não "
-               "persistem entre reinicializações do servidor.")
+    if drive_sync.esta_configurado():
+        st.caption("🔄 Sincronização com o Google Drive **ativa** — os arquivos enviados "
+                   "abaixo são salvos na pasta Data do Drive e restaurados automaticamente "
+                   "a cada reinicialização do servidor.")
+    else:
+        st.caption("Envie aqui os arquivos necessários para o app funcionar — em especial "
+                   "depois de publicar na nuvem, onde os arquivos enviados por upload não "
+                   "persistem entre reinicializações do servidor (sincronização com o "
+                   "Google Drive não configurada — ver `CONFIGURAR_GOOGLE_DRIVE.md`).")
     from core.config import (BASES_XLSX, ORCAMENTO_HISTORICO_XLSX,
                              ORCAMENTO_2026_DB, DADOS_REAIS_DB)
 
