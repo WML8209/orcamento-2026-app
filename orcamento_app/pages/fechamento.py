@@ -90,6 +90,67 @@ if not df_outro.empty:
 
 st.divider()
 
+# --- Curva mensal (realizado + projetado) ---
+rotulo_fluxo = "desembolso" if ramo == eng.RAMO_DESPESA else "arrecadação"
+st.subheader(f"📅 Curva mensal de {rotulo_fluxo}")
+df_mensal = eng.carregar_mensal(ramo=ramo)
+if df_mensal.empty:
+    st.info("Curva mensal ainda não gerada — clique em Recalcular para gerá-la.")
+else:
+    nats_curva = [n for n in eng.NATUREZAS_ROTULOS if n in set(df_mensal["natureza"])]
+    nat_sel = st.selectbox(
+        "Natureza (curva)", ["(Todas)"] + nats_curva,
+        format_func=lambda n: "(Todas as naturezas)" if n == "(Todas)" else eng.NATUREZAS_ROTULOS.get(n, n),
+        label_visibility="collapsed",
+    )
+    df_curva = df_mensal if nat_sel == "(Todas)" else df_mensal[df_mensal["natureza"] == nat_sel]
+
+    import altair as alt
+    agg = df_curva.groupby(["mes", "projetado"], as_index=False)["valor"].sum()
+    agg["Tipo"] = agg["projetado"].map({0: "Realizado", 1: "Projetado"})
+    agg["mes_nome"] = agg["mes"].map(MESES_PT)
+    agg["valor_mi"] = agg["valor"] / 1e6
+    agg["valor_fmt"] = agg["valor"].map(lambda v: "R$ " + fmt_num_br(v))
+    ordem_meses = [MESES_PT[m] for m in range(1, 13)]
+    grafico = (
+        alt.Chart(agg)
+        .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
+        .encode(
+            x=alt.X("mes_nome:N", sort=ordem_meses, title=None, axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("valor_mi:Q", title="R$ milhões"),
+            color=alt.Color("Tipo:N", title=None, sort=["Realizado", "Projetado"],
+                            scale=alt.Scale(domain=["Realizado", "Projetado"],
+                                            range=["#2d5fa8", "#3fa0c8"])),
+            tooltip=[alt.Tooltip("mes_nome:N", title="Mês"),
+                     alt.Tooltip("Tipo:N", title="Tipo"),
+                     alt.Tooltip("valor_fmt:N", title="Valor")],
+        )
+        .properties(height=280)
+    )
+    st.altair_chart(grafico, use_container_width=True)
+
+    # Matriz mensal: por natureza (visão geral) ou por conta (natureza escolhida)
+    linhas_matriz = []
+    if nat_sel == "(Todas)":
+        for nat in nats_curva:
+            sub_m = df_mensal[df_mensal["natureza"] == nat]
+            valores = sub_m.groupby("mes")["valor"].sum().to_dict()
+            linhas_matriz.append({"rotulo": eng.NATUREZAS_ROTULOS.get(nat, nat),
+                                  "valores": valores, "total": sub_m["valor"].sum()})
+    else:
+        for conta_m, sub_m in df_curva.groupby("conta"):
+            valores = sub_m.groupby("mes")["valor"].sum().to_dict()
+            linhas_matriz.append({"rotulo": f"{conta_m} — {sub_m['descricao'].iloc[0]}",
+                                  "valores": valores, "total": sub_m["valor"].sum()})
+        linhas_matriz.sort(key=lambda x: -x["total"])
+    valores_tot = df_curva.groupby("mes")["valor"].sum().to_dict()
+    linhas_matriz.append({"rotulo": "TOTAL", "valores": valores_tot,
+                          "total": df_curva["valor"].sum(), "eh_total": True})
+    components.html(gerar_html_curva_mensal(linhas_matriz, mes_corte, MESES_PT),
+                    height=min(160 + len(linhas_matriz) * 32, 700), scrolling=True)
+
+st.divider()
+
 # --- Filtros ---
 c_f1, c_f2 = st.columns(2)
 so_divergentes = c_f1.checkbox(f"Só divergências M3×M2 > {eng.LIMIAR_DIVERGENCIA:.0%} (materiais)")
@@ -163,67 +224,6 @@ else:
     }
     n_linhas = len(df_view) + len(grupos) + 1
     components.html(gerar_html_fechamento(grupos, total), height=min(140 + n_linhas * 34, 900), scrolling=True)
-
-st.divider()
-
-# --- Curva mensal (realizado + projetado) ---
-rotulo_fluxo = "desembolso" if ramo == eng.RAMO_DESPESA else "arrecadação"
-st.subheader(f"📅 Curva mensal de {rotulo_fluxo}")
-df_mensal = eng.carregar_mensal(ramo=ramo)
-if df_mensal.empty:
-    st.info("Curva mensal ainda não gerada — clique em Recalcular para gerá-la.")
-else:
-    nats_curva = [n for n in eng.NATUREZAS_ROTULOS if n in set(df_mensal["natureza"])]
-    nat_sel = st.selectbox(
-        "Natureza (curva)", ["(Todas)"] + nats_curva,
-        format_func=lambda n: "(Todas as naturezas)" if n == "(Todas)" else eng.NATUREZAS_ROTULOS.get(n, n),
-        label_visibility="collapsed",
-    )
-    df_curva = df_mensal if nat_sel == "(Todas)" else df_mensal[df_mensal["natureza"] == nat_sel]
-
-    import altair as alt
-    agg = df_curva.groupby(["mes", "projetado"], as_index=False)["valor"].sum()
-    agg["Tipo"] = agg["projetado"].map({0: "Realizado", 1: "Projetado"})
-    agg["mes_nome"] = agg["mes"].map(MESES_PT)
-    agg["valor_mi"] = agg["valor"] / 1e6
-    agg["valor_fmt"] = agg["valor"].map(lambda v: "R$ " + fmt_num_br(v))
-    ordem_meses = [MESES_PT[m] for m in range(1, 13)]
-    grafico = (
-        alt.Chart(agg)
-        .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
-        .encode(
-            x=alt.X("mes_nome:N", sort=ordem_meses, title=None, axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("valor_mi:Q", title="R$ milhões"),
-            color=alt.Color("Tipo:N", title=None, sort=["Realizado", "Projetado"],
-                            scale=alt.Scale(domain=["Realizado", "Projetado"],
-                                            range=["#2d5fa8", "#3fa0c8"])),
-            tooltip=[alt.Tooltip("mes_nome:N", title="Mês"),
-                     alt.Tooltip("Tipo:N", title="Tipo"),
-                     alt.Tooltip("valor_fmt:N", title="Valor")],
-        )
-        .properties(height=280)
-    )
-    st.altair_chart(grafico, use_container_width=True)
-
-    # Matriz mensal: por natureza (visão geral) ou por conta (natureza escolhida)
-    linhas_matriz = []
-    if nat_sel == "(Todas)":
-        for nat in nats_curva:
-            sub_m = df_mensal[df_mensal["natureza"] == nat]
-            valores = sub_m.groupby("mes")["valor"].sum().to_dict()
-            linhas_matriz.append({"rotulo": eng.NATUREZAS_ROTULOS.get(nat, nat),
-                                  "valores": valores, "total": sub_m["valor"].sum()})
-    else:
-        for conta_m, sub_m in df_curva.groupby("conta"):
-            valores = sub_m.groupby("mes")["valor"].sum().to_dict()
-            linhas_matriz.append({"rotulo": f"{conta_m} — {sub_m['descricao'].iloc[0]}",
-                                  "valores": valores, "total": sub_m["valor"].sum()})
-        linhas_matriz.sort(key=lambda x: -x["total"])
-    valores_tot = df_curva.groupby("mes")["valor"].sum().to_dict()
-    linhas_matriz.append({"rotulo": "TOTAL", "valores": valores_tot,
-                          "total": df_curva["valor"].sum(), "eh_total": True})
-    components.html(gerar_html_curva_mensal(linhas_matriz, mes_corte, MESES_PT),
-                    height=min(160 + len(linhas_matriz) * 32, 700), scrolling=True)
 
 st.divider()
 
