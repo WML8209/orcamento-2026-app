@@ -29,6 +29,12 @@ Tudo dentro da pasta `data/`. A tela **Início** do app mostra o status de
 cada um desses arquivos e permite enviar/substituir qualquer um deles direto
 pela interface (útil sobretudo depois de publicar o app na nuvem).
 
+Opcionalmente, esses 4 arquivos podem ser sincronizados automaticamente com
+uma pasta **Data** no seu Google Drive — resolve a perda de dados quando o
+Streamlit Cloud reinicia o container (disco efêmero). Ver
+`CONFIGURAR_GOOGLE_DRIVE.md` para o passo a passo; sem essa configuração, o
+app funciona normalmente só com o disco local.
+
 | Arquivo | O que é | Como atualizar |
 |---|---|---|
 | `dados_reais.db` | Banco SQLite com o orçamento e o executado reais do CFC — é o que alimenta a tela **Fechamento 2026** | Gerado localmente por `python importar_dados.py` (ver Orcamento2026.md). Depois é só enviar o arquivo pela tela Início ou substituir em `data/`. |
@@ -37,10 +43,11 @@ pela interface (útil sobretudo depois de publicar o app na nuvem).
 | `orcamento2026.db` | Banco SQLite criado/mantido automaticamente pelo app (`core/db.py`) | Não precisa mexer — é recriado vazio sozinho se não existir. |
 | `exportados/` | PDFs e Excel gerados pela tela Fechamento 2026 | Criada automaticamente a cada exportação. |
 
-Se quiser acessar de mais de um computador (ex. notebook + PC), mova a
-pasta `data/` inteira para uma pasta sincronizada (OneDrive, Google Drive)
-e aponte `ORCAMENTO_DATA_DIR` (variável de ambiente) ou edite
-`core/config.py` para esse caminho.
+Se quiser acessar de mais de um computador (ex. notebook + PC) sem usar a
+sincronização com o Google Drive acima, mova a pasta `data/` inteira para
+uma pasta sincronizada (OneDrive, Google Drive Desktop) e aponte
+`ORCAMENTO_DATA_DIR` (variável de ambiente) ou edite `core/config.py` para
+esse caminho.
 
 ## Tela Fechamento 2026
 
