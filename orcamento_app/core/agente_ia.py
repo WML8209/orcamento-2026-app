@@ -307,8 +307,8 @@ def _extrair_erro_api(resp: requests.Response) -> str:
     return resp.text[:500] if resp.text else f"HTTP {resp.status_code}"
 
 
-def _chamar_openrouter(mensagens: list, timeout: int = 60,
-                       max_tokens: int = 3000, temperature: float = 0.4) -> str:
+def _chamar_openrouter(mensagens: list, timeout: int = 90,
+                       max_tokens: int = 8000, temperature: float = 0.4) -> str:
     if not config.OPENROUTER_API_KEY:
         raise AgenteIAError(
             "Chave da API do OpenRouter não configurada. Defina a variável de ambiente "
@@ -370,7 +370,7 @@ def _chamar_openrouter(mensagens: list, timeout: int = 60,
 
 def gerar_analise_ia(df_despesa: pd.DataFrame, df_receita: pd.DataFrame,
                      mes_corte: int, ano: int = ANO_ORCAMENTO,
-                     conselho: str = CONSELHO_PADRAO, timeout: int = 60) -> str:
+                     conselho: str = CONSELHO_PADRAO, timeout: int = 90) -> str:
     """Gera o relatório de análise de IA da projeção de fechamento (despesa + receita).
 
     df_despesa/df_receita: retorno de core.projecao_engine.carregar_resultado()
