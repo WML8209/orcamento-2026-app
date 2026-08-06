@@ -18,6 +18,19 @@ from core.tabela_html import gerar_html_fechamento, gerar_html_curva_mensal
 
 st.title("🎯 Projeção de Fechamento 2026")
 
+# Esta página, registrada como arquivo em st.Page (não como função), não
+# herda o layout="wide" definido em Home.py — fica presa nos 736px do modo
+# centralizado padrão. Força a largura larga aqui via CSS.
+st.markdown("""
+<style>
+.block-container {
+    max-width: 100%;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
 if not DADOS_REAIS_DB.exists():
     st.error(f"Banco de dados reais não encontrado em `{DADOS_REAIS_DB}`. "
              "Rode `python importar_dados.py` primeiro (ver Orcamento2026.md).")
