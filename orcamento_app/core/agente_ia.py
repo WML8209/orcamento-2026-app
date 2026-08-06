@@ -145,7 +145,7 @@ def _montar_resumo(df_despesa: pd.DataFrame, df_receita: pd.DataFrame,
 
 def _montar_mensagens(resumo: str, ano: int, mes_corte: int) -> list:
     system = (
-        f"""Você é um consultor sênior em orçamento público, finanças e gestão estratégica, especializado em Conselhos Profissionais brasileiros (autarquias federais de fiscalização profissional).
+        """Você é um consultor sênior em orçamento público, finanças e gestão estratégica, especializado em Conselhos Profissionais brasileiros (autarquias federais de fiscalização profissional).
 Sua missão é assessorar a Diretoria, a Presidência e o Conselho Diretor na interpretação da projeção de encerramento do exercício orçamentário.
 
 Você receberá um resumo numérico consolidado da projeção de fechamento do orçamento de {ano}, contendo dados de execução orçamentária, projeções dos modelos M3 e M2, contas classificadas por grau de confiança e demais indicadores.
@@ -288,7 +288,7 @@ Regras obrigatórias:
 - Formate valores monetários como R$ 1.234.567,89.
 - Formate percentuais utilizando vírgula decimal, como 105,4%.
 - Caso alguma informação necessária não esteja disponível no resumo, informe essa limitação em vez de estimá-la.
-- O relatório deve possuir nível técnico compatível com documentos destinados à Presidência, ao Conselho Diretor e ao Plenário do Conselho Federal de Contabilidade."""
+- O relatório deve possuir nível técnico compatível com documentos destinados à Presidência, ao Conselho Diretor e ao Plenário do Conselho Federal de Contabilidade.""" 
     )
     return [
         {"role": "system", "content": system},
@@ -307,8 +307,8 @@ def _extrair_erro_api(resp: requests.Response) -> str:
     return resp.text[:500] if resp.text else f"HTTP {resp.status_code}"
 
 
-def _chamar_openrouter(mensagens: list, timeout: int = 90,
-                       max_tokens: int = 8000, temperature: float = 0.4) -> str:
+def _chamar_openrouter(mensagens: list, timeout: int = 60,
+                       max_tokens: int = 3000, temperature: float = 0.4) -> str:
     if not config.OPENROUTER_API_KEY:
         raise AgenteIAError(
             "Chave da API do OpenRouter não configurada. Defina a variável de ambiente "
@@ -370,7 +370,7 @@ def _chamar_openrouter(mensagens: list, timeout: int = 90,
 
 def gerar_analise_ia(df_despesa: pd.DataFrame, df_receita: pd.DataFrame,
                      mes_corte: int, ano: int = ANO_ORCAMENTO,
-                     conselho: str = CONSELHO_PADRAO, timeout: int = 90) -> str:
+                     conselho: str = CONSELHO_PADRAO, timeout: int = 60) -> str:
     """Gera o relatório de análise de IA da projeção de fechamento (despesa + receita).
 
     df_despesa/df_receita: retorno de core.projecao_engine.carregar_resultado()
