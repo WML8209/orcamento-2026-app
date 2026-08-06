@@ -65,27 +65,27 @@ def tem_erro_no_log(texto):
     return any(p.search(texto) for p in PADROES_ERRO)
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Atualização mensal dos dados reais do CFC")
-    ap.add_argument("--pular-download", action="store_true",
-                    help="Não baixa nada; só reimporta os CSVs já presentes.")
-    ap.add_argument("--codigos-dir", default=None,
-                    help="Pasta com os CSVs (padrão: a mesma que o importador usa).")
-    args = ap.parse_args()
-
-    if args.codigos_dir:
-        os.environ["ORCAMENTO_CODIGOS_DIR"] = args.codigos_dir
+def executar(pular_download: bool = False, codigos_dir: str | None = None) -> int:
+    """Roda a atualização mensal (downloads + importação + reconciliação) e
+    devolve o código de saída (0/1/2 — ver docstring do módulo), sem chamar
+    sys.exit. Toda a narração do processo sai por print(), para quem chamar
+    poder capturá-la (ex.: redirect_stdout) ou deixá-la ir direto pro
+    terminal. Reaproveitada tanto pelo CLI (main, abaixo) quanto pelo botão
+    "Rodar atualização mensal agora" da tela Início (Home.py)."""
+    if codigos_dir:
+        os.environ["ORCAMENTO_CODIGOS_DIR"] = codigos_dir
 
     # Importa a config DEPOIS de ajustar a env var, para pegar o mesmo
     # CODIGOS_DIR que o importar_dados.py vai usar.
     aqui = Path(__file__).resolve().parent
-    sys.path.insert(0, str(aqui))
+    if str(aqui) not in sys.path:
+        sys.path.insert(0, str(aqui))
     from core.config import CODIGOS_DIR  # noqa: E402
 
     py = sys.executable  # usa o mesmo Python que está rodando este script
 
     # ---------- 1 e 2: downloads + conferência do log ----------
-    if args.pular_download:
+    if pular_download:
         print("Pulando os downloads (--pular-download): usando os CSVs já baixados.")
     else:
         cabecalho(f"1) BAIXANDO OS CSVs — origem: {CODIGOS_DIR}")
@@ -96,10 +96,10 @@ def main():
             if not pasta.exists():
                 print(f"  ✗ Subpasta não encontrada: {pasta}")
                 print("    Confira o nome da subpasta em DOWNLOADS ou o --codigos-dir.")
-                sys.exit(1)
+                return 1
             if not caminho_script.exists():
                 print(f"  ✗ Script não encontrado: {caminho_script}")
-                sys.exit(1)
+                return 1
             # equivale a: cd <subpasta> && python ../<script>
             rc, log = rodar([py, str(caminho_script)], cwd=pasta)
             if rc != 0 or tem_erro_no_log(log):
@@ -108,7 +108,7 @@ def main():
                 print(f"  Origem: {subpasta}  ·  Motivo: {motivo}")
                 print("  Rode o download de novo (pode ter sido falha isolada de rede)")
                 print("  e só então repita este comando.")
-                sys.exit(1)
+                return 1
             print(f"  ✔ {subpasta}: download sem erros.")
 
     # ---------- 3: importar (regera dados_reais.db + reconciliação) ----------
@@ -120,14 +120,24 @@ def main():
     if rc_imp == 2:
         print("  ⚠ Importou, MAS a reconciliação acusou divergência.")
         print("    Revise a tabela 'reconciliacao' no banco antes de usar a projeção.")
-        sys.exit(2)
+        return 2
     if rc_imp != 0:
         print(f"  ✗ Importação falhou (código {rc_imp}). Veja o log acima.")
-        sys.exit(rc_imp)
+        return rc_imp
     print("  ✔ Dados atualizados e reconciliação 100% OK.")
     print("  → Próximo passo: abra a tela Fechamento 2026 e RECALCULE a projeção")
     print("    (seus overrides e métodos por conta continuam valendo).")
-    sys.exit(0)
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Atualização mensal dos dados reais do CFC")
+    ap.add_argument("--pular-download", action="store_true",
+                    help="Não baixa nada; só reimporta os CSVs já presentes.")
+    ap.add_argument("--codigos-dir", default=None,
+                    help="Pasta com os CSVs (padrão: a mesma que o importador usa).")
+    args = ap.parse_args()
+    sys.exit(executar(pular_download=args.pular_download, codigos_dir=args.codigos_dir))
 
 
 if __name__ == "__main__":

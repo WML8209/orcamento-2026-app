@@ -1,3 +1,6 @@
+import io
+from contextlib import redirect_stdout
+
 import streamlit as st
 from core import db, drive_sync
 
@@ -45,6 +48,40 @@ despesa/receita, com tabela por natureza e conta, curva mensal de
 desembolso/arrecadação, configuração de método por conta e exportação em
 Excel/PDF.
 """)
+    st.divider()
+    st.subheader("Atualização mensal dos dados reais")
+    st.caption("Baixa os CSVs mais recentes da API do CFC, reimporta para `dados_reais.db` "
+               "e roda a reconciliação Diário × Realizado — o mesmo que `python "
+               "atualizar_mensal.py` (ver `Checklist_Atualizacao_Mensal.md`). Só funciona "
+               "rodando localmente, com a pasta `Códigos` disponível; seus overrides e "
+               "métodos por conta não são apagados.")
+    pular_download = st.checkbox(
+        "Pular download (só reimportar os CSVs já baixados)",
+        key="atualizar_mensal_pular_download",
+    )
+    if st.button("🔄 Rodar atualização mensal agora", use_container_width=True):
+        from atualizar_mensal import executar
+        from core.config import DADOS_REAIS_DB
+
+        saida = io.StringIO()
+        with st.spinner("Atualizando dados mensais — pode levar alguns minutos..."):
+            with redirect_stdout(saida):
+                codigo = executar(pular_download=pular_download)
+            if codigo == 0 and drive_sync.esta_configurado():
+                drive_sync.enviar_arquivo(DADOS_REAIS_DB)
+
+        with st.expander("Log da atualização", expanded=codigo != 0):
+            st.code(saida.getvalue() or "(sem saída)")
+
+        if codigo == 0:
+            st.success("✔ Dados atualizados e reconciliação 100% OK. Vá em **Fechamento "
+                        "2026** e clique em **Recalcular**.")
+        elif codigo == 2:
+            st.warning("⚠ Importou, mas a reconciliação acusou divergência — revise a "
+                       "tabela `reconciliacao` no banco antes de usar a projeção.")
+        else:
+            st.error(f"✗ Falhou (código {codigo}). Veja o log acima.")
+
     st.divider()
     st.subheader("Status dos arquivos de dados")
     if drive_sync.esta_configurado():
