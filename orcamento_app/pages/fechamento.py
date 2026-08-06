@@ -63,17 +63,35 @@ with c_btn:
         st.rerun()
 
 # --- Métricas gerais ---
+# Fonte reduzida e sem quebra em reticências: com o valor cheio (não mais em
+# milhares), o tamanho padrão do st.metric estoura a largura da coluna.
+st.markdown("""
+<style>
+[data-testid="stMetricValue"] {
+    font-size: 1.4rem;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+}
+[data-testid="stMetricLabel"] * {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+}
+</style>
+""", unsafe_allow_html=True)
+
 tot_orc = float(df["orcamento"].sum())
 tot_ytd = float(df["ytd"].sum())
 tot_m3 = float(df["proj_fechamento"].sum())
 tot_m2 = float(df["proj_m2"].sum())
 m1, m2_, m3_, m4 = st.columns(4)
 rotulo_ramo = eng.RAMOS_ROTULOS[ramo]
-m1.metric(f"Orçamento 2026 ({rotulo_ramo}) — R$ mil", fmt_num_br(tot_orc / 1000))
-m2_.metric(f"Realizado até {MESES_PT[mes_corte]} — R$ mil", fmt_num_br(tot_ytd / 1000))
-m3_.metric("Fechamento projetado (M3) — R$ mil", fmt_num_br(tot_m3 / 1000),
+m1.metric(f"Orçamento 2026 ({rotulo_ramo}) — R$", fmt_num_br(tot_orc))
+m2_.metric(f"Realizado até {MESES_PT[mes_corte]} — R$", fmt_num_br(tot_ytd))
+m3_.metric("Fechamento projetado (M3) — R$", fmt_num_br(tot_m3),
            delta=f"{tot_m3 / tot_orc:.1%} do orçamento", delta_color="off")
-m4.metric("Conferência (M2) — R$ mil", fmt_num_br(tot_m2 / 1000),
+m4.metric("Conferência (M2) — R$", fmt_num_br(tot_m2),
           delta=f"{(tot_m3 - tot_m2) / max(abs(tot_m2), 1):.1%} vs M3", delta_color="off")
 
 # --- Resultado orçamentário projetado (quando os dois ramos já foram gerados) ---
