@@ -3,10 +3,10 @@
 Resolve a ressalva registrada em `Analise_Projecao_Orcamento_2026.md` (§2.3):
 no Streamlit Cloud o disco do container é efêmero — um upload feito ao vivo
 pela tela **Início** (`bases.xlsx`, `orcamento_historico.xlsx`,
-`orcamento2026.db`, `dados_reais.db`) some no próximo reinício/redeploy se
-ninguém commitar o arquivo no git a tempo.
+`orcamento2026.db`, `dados_reais.db`, `projecao.db`) some no próximo
+reinício/redeploy se ninguém commitar o arquivo no git a tempo.
 
-Com isso configurado, o app passa a guardar esses 4 arquivos numa pasta
+Com isso configurado, o app passa a guardar esses 5 arquivos numa pasta
 **Data** no seu Google Drive (criada automaticamente pelo próprio app na
 primeira sincronização): ao iniciar, baixa a versão mais recente de lá; a
 cada upload pela tela Início, sobe a versão nova de volta. O Drive vira a

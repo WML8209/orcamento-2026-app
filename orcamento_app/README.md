@@ -29,7 +29,7 @@ Tudo dentro da pasta `data/`. A tela **Início** do app mostra o status de
 cada um desses arquivos e permite enviar/substituir qualquer um deles direto
 pela interface (útil sobretudo depois de publicar o app na nuvem).
 
-Opcionalmente, esses 4 arquivos podem ser sincronizados automaticamente com
+Opcionalmente, esses 5 arquivos podem ser sincronizados automaticamente com
 uma pasta **Data** no seu Google Drive — resolve a perda de dados quando o
 Streamlit Cloud reinicia o container (disco efêmero). Ver
 `CONFIGURAR_GOOGLE_DRIVE.md` para o passo a passo; sem essa configuração, o
@@ -37,7 +37,8 @@ app funciona normalmente só com o disco local.
 
 | Arquivo | O que é | Como atualizar |
 |---|---|---|
-| `dados_reais.db` | Banco SQLite com o orçamento e o executado reais do CFC — é o que alimenta a tela **Fechamento 2026** | Gerado localmente por `python importar_dados.py` (ver Orcamento2026.md). Depois é só enviar o arquivo pela tela Início ou substituir em `data/`. |
+| `dados_reais.db` | Banco SQLite com o orçamento e o executado reais do CFC (dados-base, descartável — regenerado por inteiro a cada reimport) | Gerado localmente por `python importar_dados.py` (ver Orcamento2026.md). Depois é só enviar o arquivo pela tela Início ou substituir em `data/`. |
+| `projecao.db` | Banco SQLite da tela **Fechamento 2026**: método por conta, "Fechamento Manual" e a última projeção calculada — nunca tocado pelo reimport | Gerado/atualizado pela própria tela (configurar conta, Recalcular). Separado do `dados_reais.db` de propósito, para nunca ser apagado por uma atualização mensal. |
 | `bases.xlsx` | Abas fixas de referência (Datas, PlanoDeContas, Projetos, SubProjetos, PCA2025, ListaContratos, ParametrosDiaria, Diario) | Legado do sistema anterior — hoje não é lido por nenhuma tela ativa. |
 | `orcamento_historico.xlsx` | Orçamento fixo de anos anteriores a 2026 | Legado do sistema anterior — hoje não é lido por nenhuma tela ativa. |
 | `orcamento2026.db` | Banco SQLite criado/mantido automaticamente pelo app (`core/db.py`) | Não precisa mexer — é recriado vazio sozinho se não existir. |
@@ -77,7 +78,7 @@ core/
   config.py             -> caminhos dos arquivos (edite aqui se mudar a pasta de dados)
   db.py                 -> banco SQLite orcamento2026.db (criado automaticamente)
   dados_reais.py        -> importador dos CSVs do CFC para dados_reais.db
-  projecao_engine.py    -> motor de projeção (M3 híbrido por natureza + conferência M2)
+  projecao_engine.py    -> motor de projeção (M3 híbrido por natureza + conferência M2); lê dados_reais.db, grava config/resultado em projecao.db
   exportar.py           -> geração de PDF e Excel da Projeção de Fechamento
   tabela_html.py         -> renderização das tabelas HTML da tela Fechamento 2026
   formatos.py            -> formatação de números/datas no padrão BR

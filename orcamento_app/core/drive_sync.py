@@ -25,14 +25,15 @@ import streamlit as st
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 NOME_PASTA = "Data"
 
-# Os quatro arquivos que a tela Início permite enviar/substituir — ver
-# core/config.py (BASES_XLSX, ORCAMENTO_HISTORICO_XLSX, ORCAMENTO_2026_DB,
-# DADOS_REAIS_DB), todos dentro de DATA_DIR.
+# Os arquivos que a tela Início permite enviar/substituir — ver core/config.py
+# (BASES_XLSX, ORCAMENTO_HISTORICO_XLSX, ORCAMENTO_2026_DB, DADOS_REAIS_DB,
+# PROJECAO_DB), todos dentro de DATA_DIR.
 ARQUIVOS_SINCRONIZADOS = [
     "bases.xlsx",
     "orcamento_historico.xlsx",
     "orcamento2026.db",
     "dados_reais.db",
+    "projecao.db",
 ]
 
 

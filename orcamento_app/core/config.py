@@ -45,8 +45,17 @@ CODIGOS_DIR = Path(os.environ.get(
 ))
 
 # Banco SQLite compacto gerado por importar_dados.py a partir dos CSVs acima.
-# Separado do orcamento2026.db (lançamentos manuais) de propósito.
+# Separado do orcamento2026.db (lançamentos manuais) de propósito. Regenerado
+# por inteiro a cada reimport — trate como descartável, nunca guarde
+# configuração aqui (ver PROJECAO_DB).
 DADOS_REAIS_DB = DATA_DIR / "dados_reais.db"
+
+# Banco SQLite da tela Fechamento 2026: métodos por conta, "Fechamento Manual"
+# (override) e resultado/curva mensal persistidos (core/projecao_engine.py).
+# Deliberadamente separado do DADOS_REAIS_DB: como este é regenerado do zero a
+# cada reimport (atualizar_mensal.py/importar_dados.py), guardar configuração
+# manual do usuário no mesmo arquivo arrisca perdê-la a cada atualização.
+PROJECAO_DB = DATA_DIR / "projecao.db"
 
 CONSELHO_PADRAO = "CFC"
 

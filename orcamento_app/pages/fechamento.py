@@ -12,7 +12,7 @@ import streamlit.components.v1 as components
 import pandas as pd
 
 from core import exportar, projecao_engine as eng, agente_ia, drive_sync
-from core.config import ANO_ORCAMENTO, CONSELHO_PADRAO, DADOS_REAIS_DB
+from core.config import ANO_ORCAMENTO, CONSELHO_PADRAO, DADOS_REAIS_DB, PROJECAO_DB
 from core.formatos import fmt_num_br, parse_valor_br, MESES_PT
 from core.tabela_html import gerar_html_fechamento, gerar_html_curva_mensal
 
@@ -32,7 +32,7 @@ def _recalcular():
     with st.spinner("Recalculando projeção..."):
         eng.projetar_fechamento(conselho=CONSELHO_PADRAO, ano=ANO_ORCAMENTO,
                                 persistir=True, ramo=ramo)
-        drive_sync.enviar_arquivo(DADOS_REAIS_DB)
+        drive_sync.enviar_arquivo(PROJECAO_DB)
 
 
 def _fmt_mes(m):

@@ -107,8 +107,9 @@ Excel/PDF.
         with col_botao:
             if st.button("📤 Atualizar Google Drive agora", use_container_width=True):
                 from core.config import (BASES_XLSX, ORCAMENTO_HISTORICO_XLSX,
-                                         ORCAMENTO_2026_DB, DADOS_REAIS_DB)
-                arquivos = [BASES_XLSX, ORCAMENTO_HISTORICO_XLSX, ORCAMENTO_2026_DB, DADOS_REAIS_DB]
+                                         ORCAMENTO_2026_DB, DADOS_REAIS_DB, PROJECAO_DB)
+                arquivos = [BASES_XLSX, ORCAMENTO_HISTORICO_XLSX, ORCAMENTO_2026_DB,
+                           DADOS_REAIS_DB, PROJECAO_DB]
                 with st.spinner("Enviando arquivos para o Google Drive..."):
                     for arquivo in arquivos:
                         if arquivo.exists():
@@ -120,12 +121,17 @@ Excel/PDF.
                    "persistem entre reinicializações do servidor (sincronização com o "
                    "Google Drive não configurada — ver `CONFIGURAR_GOOGLE_DRIVE.md`).")
     from core.config import (BASES_XLSX, ORCAMENTO_HISTORICO_XLSX,
-                             ORCAMENTO_2026_DB, DADOS_REAIS_DB)
+                             ORCAMENTO_2026_DB, DADOS_REAIS_DB, PROJECAO_DB)
 
     _upload_arquivo("Dados reais do CFC (dados_reais.db)", DADOS_REAIS_DB, ["db"],
                     "dados_reais",
                     "Necessário para a tela Fechamento 2026. Gerado localmente por "
                     "`python importar_dados.py` (ver Orcamento2026.md).")
+    _upload_arquivo("Configuração da projeção (projecao.db)", PROJECAO_DB, ["db"],
+                    "projecao",
+                    "Métodos por conta, \"Fechamento Manual\" e a última projeção "
+                    "calculada. Só envie para restaurar configuração feita em outro "
+                    "ambiente — normalmente é sincronizado sozinho pelo Drive.")
     _upload_arquivo("Bases fixas (bases.xlsx)", BASES_XLSX, ["xlsx"], "bases")
     _upload_arquivo("Orçamento histórico (orcamento_historico.xlsx)",
                     ORCAMENTO_HISTORICO_XLSX, ["xlsx"], "historico")

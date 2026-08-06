@@ -33,7 +33,7 @@ import sqlite3
 
 import pandas as pd
 
-from core.config import DADOS_REAIS_DB, CONSELHO_PADRAO, ANO_ORCAMENTO
+from core.config import DADOS_REAIS_DB, PROJECAO_DB, CONSELHO_PADRAO, ANO_ORCAMENTO
 
 ANOS_HISTORICO = [2022, 2023, 2024, 2025]
 ANOS_FALLBACK_NOMINAL = [2024, 2025]   # média nominal p/ contas de perfil concentrado (ex.: 13º)
@@ -193,9 +193,21 @@ class ProjecaoConta:
 
 
 def get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DADOS_REAIS_DB)
+    """Conexão com o PROJECAO_DB — config por conta, parâmetros globais e
+    resultado/curva mensal persistidos. Separado do DADOS_REAIS_DB de
+    propósito (ver core/config.py): imune a reimports e a um eventual
+    git restore/checkout no banco de dados-base."""
+    PROJECAO_DB.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(PROJECAO_DB)
     conn.executescript(SCHEMA)
     return conn
+
+
+def get_conn_dados() -> sqlite3.Connection:
+    """Conexão só-leitura (por convenção) com o DADOS_REAIS_DB — dados-base
+    regenerados pelo importador (orcamento_anual, execucao_mensal,
+    importacao_meta). Nunca escreve aqui."""
+    return sqlite3.connect(DADOS_REAIS_DB)
 
 
 def _fmt(v: float) -> str:
@@ -374,11 +386,12 @@ def projetar_fechamento(conselho: str = CONSELHO_PADRAO, ano: int = ANO_ORCAMENT
     (6.3 despesa / 6.2 receita) no ano. Retorna a lista de ProjecaoConta e, se
     persistir=True, grava projecao_resultado (sem tocar no outro ramo)."""
     conn = get_conn()
+    conn_dados = get_conn_dados()
     try:
         if mes_corte is None:
-            mes_corte = mes_corte_padrao(conn, ano)
+            mes_corte = mes_corte_padrao(conn_dados, ano)
 
-        contas, exec_ = _carregar_dados(conn, conselho, ano, ramo)
+        contas, exec_ = _carregar_dados(conn_dados, conselho, ano, ramo)
 
         # Parâmetros globais de pessoal (data-base) — só fazem sentido na despesa
         pes_pct = float(_parametro(conn, "pessoal_reajuste_pct", 0) or 0) if ramo == RAMO_DESPESA else 0.0
@@ -505,6 +518,7 @@ def projetar_fechamento(conselho: str = CONSELHO_PADRAO, ano: int = ANO_ORCAMENT
         return resultados
     finally:
         conn.close()
+        conn_dados.close()
 
 
 def carregar_resultado(conselho: str = CONSELHO_PADRAO, ano: int = ANO_ORCAMENTO,

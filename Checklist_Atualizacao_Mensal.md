@@ -58,20 +58,28 @@ os apaga.
   **dia 28**, o mês é tratado como parcial e recua um mês. Para "fechar" um mês
   na projeção, o Diário dele precisa estar completo.
 
-- **Overrides não se perdem ao reimportar.** O importador só substitui as
-  tabelas de dados-base; configurações e projeção ficam preservadas. Só é
-  preciso **recalcular** depois.
+- **Overrides não se perdem ao reimportar — de fato, não só por convenção.**
+  Métodos por conta, "Fechamento Manual" e a última projeção calculada ficam
+  num banco à parte, `data/projecao.db` (ver `core/projecao_engine.py`), que o
+  importador nunca toca. O `dados_reais.db` é regenerado do zero a cada
+  reimport (dados-base, descartável); o `projecao.db` só muda quando você
+  configura uma conta ou clica em **Recalcular**. Isso também protege contra
+  um `git restore`/`checkout` acidental no banco de dados-base: como os dois
+  arquivos são fisicamente separados, reverter um nunca apaga o outro.
 
-- **Onde o banco mora (crucial na nuvem).** Rodando local, o `dados_reais.db`
-  regenerado já fica em `data/` e o app lê direto. Rodando publicado (Streamlit
-  Cloud), o disco do container é efêmero — uploads feitos só ali **não
-  sobreviveriam a um reinício** do servidor sozinhos. Se a sincronização com o
-  Google Drive estiver configurada (ver `orcamento_app/CONFIGURAR_GOOGLE_DRIVE.md`),
-  isso já não é problema: reimportar localmente e clicar em **Recalcular** na
-  tela Fechamento (ou no botão "Atualizar Google Drive agora" da tela Início)
-  reenvia o `dados_reais.db` atualizado para o Drive automaticamente, e o app
-  publicado passa a puxar essa versão a cada reinício.
+- **Onde o banco mora (crucial na nuvem).** Rodando local, os bancos
+  regenerados/atualizados já ficam em `data/` e o app lê direto. Rodando
+  publicado (Streamlit Cloud), o disco do container é efêmero — uploads
+  feitos só ali **não sobreviveriam a um reinício** do servidor sozinhos. Se a
+  sincronização com o Google Drive estiver configurada (ver
+  `orcamento_app/CONFIGURAR_GOOGLE_DRIVE.md`), isso já não é problema, mas
+  repare que cada ação sincroniza um arquivo diferente: clicar em
+  **Recalcular** na tela Fechamento reenvia o `projecao.db`; rodar a
+  atualização mensal pelo botão da tela Início reenvia o `dados_reais.db`; o
+  botão "Atualizar Google Drive agora" reenvia todos de uma vez. O app
+  publicado passa a puxar as versões mais novas a cada reinício.
 
 - **Backup rápido antes de reimportar (opcional):** copie `data/dados_reais.db`
-  para um `.bak`. Como ele guarda também seus overrides e a última projeção,
-  um backup evita retrabalho se algo der errado no download.
+  para um `.bak`. Como ele guarda os dados-base (não os overrides — esses já
+  estão protegidos em `data/projecao.db`), um backup evita ter que rebaixar
+  os CSVs de novo se algo der errado no download.

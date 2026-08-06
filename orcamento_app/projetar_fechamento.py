@@ -1,6 +1,6 @@
 """
 Roda a Projeção de Fechamento (despesa 6.3) e imprime o relatório resumido.
-Grava o detalhamento por conta na tabela projecao_resultado do dados_reais.db.
+Grava o detalhamento por conta na tabela projecao_resultado do projecao.db.
 
 Uso (nesta pasta):
     python projetar_fechamento.py
@@ -32,7 +32,7 @@ def main():
     conselho = args.conselho or CONSELHO_PADRAO
     ano = args.ano or ANO_ORCAMENTO
 
-    conn = eng.get_conn()
+    conn = eng.get_conn_dados()
     mes_corte = args.mes_corte or eng.mes_corte_padrao(conn, ano)
     data_max = eng._meta(conn, f"diario_{ano}_data_max", "?")
     conn.close()
