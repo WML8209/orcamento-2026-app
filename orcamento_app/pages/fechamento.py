@@ -257,8 +257,11 @@ else:
         "m3": fmt_num_br(v_m3), "m2": fmt_num_br(float(df_view["proj_m2"].sum())),
         "pct": _fmt_pct(v_pct), "pct_alerta": _pct_alerta(v_pct),
     }
+    # A tabela agora rola por dentro (cabeçalho fixo — ver .pivot-wrap em
+    # tabela_html.py), então o iframe só precisa caber o conteúdo até o teto
+    # de 600px do wrapper; scrolling=True fica como rede de segurança.
     n_linhas = len(df_view) + len(grupos) + 1
-    components.html(gerar_html_fechamento(grupos, total), height=min(140 + n_linhas * 34, 900), scrolling=True)
+    components.html(gerar_html_fechamento(grupos, total), height=min(140 + n_linhas * 34, 650), scrolling=True)
 
 st.divider()
 

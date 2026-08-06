@@ -244,10 +244,20 @@ def gerar_html_fechamento(grupos: list, total: dict) -> str:
 
     return f"""
 <style>
-  .pivot-wrap {{ font-family: -apple-system, "Segoe UI", Arial, sans-serif; overflow-x: auto; }}
+  /* max-height + overflow:auto (em vez de só overflow-x) para o cabecalho
+     fixo funcionar: overflow-x:auto sozinho vira overflow-y:auto tambem por
+     regra do CSS, criando um contexto de rolagem sem altura definida — nesse
+     caso o position:sticky do thead nao tem contra o que fixar. */
+  .pivot-wrap {{
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    max-height: 600px; overflow: auto;
+  }}
   table.pivot {{ border-collapse: collapse; width: 100%; font-size: 13px; }}
   table.pivot th, table.pivot td {{ border: 1px solid #d5dbe3; padding: 5px 8px; }}
-  table.pivot thead th {{ background: #1f4e8c; color: white; text-align: left; font-weight: 700; }}
+  table.pivot thead th {{
+    background: #1f4e8c; color: white; text-align: left; font-weight: 700;
+    position: sticky; top: 0; z-index: 2;
+  }}
   table.pivot thead th.num {{ text-align: right; }}
   table.pivot td.num {{ text-align: right; white-space: nowrap; }}
   tr.row-projeto {{ background: #eef2f7; font-weight: 700; cursor: pointer; }}
