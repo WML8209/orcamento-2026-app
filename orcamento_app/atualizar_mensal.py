@@ -29,6 +29,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+# No Windows, o console usa o codepage local (ex.: cp1252) por padrão. Se
+# algum log capturado tiver caracteres fora dele (inclusive os U+FFFD que
+# aparecem quando um processo filho não escreveu em UTF-8), o print() comum
+# derruba o script com UnicodeEncodeError bem no meio da atualização.
+# Reconfigurar para UTF-8 com "replace" garante que ISSO NUNCA interrompa a
+# atualização mensal — na pior hipótese, um caractere estranho vira "?".
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 # --- O que baixar. Edite esta lista se precisar. Cada item é (subpasta, script) ---
 # Rotina mensal: só o Diário costuma mudar todo mês; o Orçamento Atualizado
 # muda quando há crédito adicional. Plano de Contas e Saldo Inicial mudam
@@ -54,8 +64,12 @@ def cabecalho(txt):
 def rodar(cmd, cwd):
     """Roda um comando capturando saída (decodifica de forma tolerante) e
     devolve (returncode, texto_da_saida)."""
+    # Força o processo filho a escrever em UTF-8 mesmo no console do Windows
+    # (que por padrão usa o codepage local, ex.: cp1252) — sem isso, qualquer
+    # acento que o filho imprima vira lixo ao ser decodificado como UTF-8 aqui.
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     proc = subprocess.run(cmd, cwd=str(cwd), stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT)
+                          stderr=subprocess.STDOUT, env=env)
     texto = proc.stdout.decode("utf-8", errors="replace")
     print(texto, end="" if texto.endswith("\n") else "\n")
     return proc.returncode, texto
