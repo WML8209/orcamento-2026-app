@@ -84,6 +84,14 @@ def executar(pular_download: bool = False, codigos_dir: str | None = None) -> in
 
     py = sys.executable  # usa o mesmo Python que está rodando este script
 
+    if not CODIGOS_DIR.exists():
+        cabecalho("PAROU: pasta de códigos não encontrada neste ambiente.")
+        print(f"  {CODIGOS_DIR} não existe aqui.")
+        print("  Downloads e importação dependem da pasta 'Códigos' do seu computador "
+              "(ver Orcamento2026.md) — por isso essa rotina só funciona rodando local, "
+              "não no app publicado na nuvem.")
+        return 1
+
     # ---------- 1 e 2: downloads + conferência do log ----------
     if pular_download:
         print("Pulando os downloads (--pular-download): usando os CSVs já baixados.")
