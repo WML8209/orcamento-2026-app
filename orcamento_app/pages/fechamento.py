@@ -218,6 +218,7 @@ for nat in eng.NATUREZAS_ROTULOS:
         continue
     sub = sub.sort_values("proj_fechamento", ascending=False)
     g_orc, g_ytd = float(sub["orcamento"].sum()), float(sub["ytd"].sum())
+    g_proj = float(sub["proj_restante"].sum())
     g_m3, g_m2 = float(sub["proj_fechamento"].sum()), float(sub["proj_m2"].sum())
     g_pct = _pct(g_m3, g_orc)
     so_ytd = (sub["metodo"] == "ytd").all()
@@ -228,6 +229,7 @@ for nat in eng.NATUREZAS_ROTULOS:
             "conta": r["conta"], "descricao": r["descricao"],
             "metodo": eng.METODO_ROTULOS.get(r["metodo"], r["metodo"]),
             "orcamento": fmt_num_br(r["orcamento"]), "ytd": fmt_num_br(r["ytd"]),
+            "projecao": fmt_num_br(r["proj_restante"]),
             "m3": fmt_num_br(r["proj_fechamento"]), "m2": fmt_num_br(r["proj_m2"]),
             "pct": _fmt_pct(pct), "pct_alerta": _pct_alerta(pct, r["metodo"]),
             "div": _fmt_pct(r["divergencia_pct"]),
@@ -237,6 +239,7 @@ for nat in eng.NATUREZAS_ROTULOS:
     grupos.append({
         "rotulo": eng.NATUREZAS_ROTULOS[nat],
         "orcamento": fmt_num_br(g_orc), "ytd": fmt_num_br(g_ytd),
+        "projecao": fmt_num_br(g_proj),
         "m3": fmt_num_br(g_m3), "m2": fmt_num_br(g_m2),
         "pct": _fmt_pct(g_pct), "pct_alerta": _pct_alerta(g_pct, "ytd" if so_ytd else None),
         "contas": contas,
@@ -250,6 +253,7 @@ else:
     v_pct = _pct(v_m3, v_orc)
     total = {
         "orcamento": fmt_num_br(v_orc), "ytd": fmt_num_br(float(df_view["ytd"].sum())),
+        "projecao": fmt_num_br(float(df_view["proj_restante"].sum())),
         "m3": fmt_num_br(v_m3), "m2": fmt_num_br(float(df_view["proj_m2"].sum())),
         "pct": _fmt_pct(v_pct), "pct_alerta": _pct_alerta(v_pct),
     }

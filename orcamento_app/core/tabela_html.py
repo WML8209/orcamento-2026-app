@@ -208,8 +208,8 @@ def gerar_html_curva_mensal(linhas: list, mes_corte: int, rotulos_mes: dict) -> 
 def gerar_html_fechamento(grupos: list, total: dict) -> str:
     """
     Tabela da Projeção de Fechamento: Natureza (grupo colapsável) > Conta,
-    colunas Orçamento | Acumulado | Fechamento M3 | % Exec | Conferência M2 |
-    Diverg. | Confiança. 'grupos' e 'total' já vêm com valores formatados;
+    colunas Orçamento | Acumulado | Projeção | Acumulado + Projeção | % Exec |
+    Conferência M2 | Diverg. | Confiança. 'grupos' e 'total' já vêm com valores formatados;
     flags 'pct_alerta', 'div_alerta' e 'confianca' controlam o destaque visual.
     """
     linhas_corpo = []
@@ -221,6 +221,7 @@ def gerar_html_fechamento(grupos: list, total: dict) -> str:
             f' <span class="qtd">({len(g["contas"])})</span></td>'
             f'<td></td>'
             f'<td class="num">{g["orcamento"]}</td><td class="num">{g["ytd"]}</td>'
+            f'<td class="num">{g["projecao"]}</td>'
             f'<td class="num">{g["m3"]}</td>'
             f'<td class="num{" pct-alto" if g.get("pct_alerta") else ""}">{g["pct"]}</td>'
             f'<td class="num">{g["m2"]}</td><td></td><td></td></tr>'
@@ -233,6 +234,7 @@ def gerar_html_fechamento(grupos: list, total: dict) -> str:
                 f'<td class="indent1">{html.escape(str(c["conta"]))} — {html.escape(str(c["descricao"]))}</td>'
                 f'<td class="metodo">{html.escape(str(c.get("metodo") or ""))}</td>'
                 f'<td class="num">{c["orcamento"]}</td><td class="num">{c["ytd"]}</td>'
+                f'<td class="num">{c["projecao"]}</td>'
                 f'<td class="num">{c["m3"]}</td>'
                 f'<td class="num{" pct-alto" if c.get("pct_alerta") else ""}">{c["pct"]}</td>'
                 f'<td class="num">{c["m2"]}</td>'
@@ -266,13 +268,15 @@ def gerar_html_fechamento(grupos: list, total: dict) -> str:
   <thead><tr>
     <th>Natureza / Conta</th><th>Método</th>
     <th class="num">Orçamento</th><th class="num">Realizado Acumulado</th>
-    <th class="num">Fechamento M3</th><th class="num">% Exec</th>
+    <th class="num">Projeção</th>
+    <th class="num">Acumulado + Projeção</th><th class="num">% Exec</th>
     <th class="num">Conferência M2</th><th class="num">Diverg.</th><th>Conf.</th>
   </tr></thead>
   <tbody>
     {"".join(linhas_corpo)}
     <tr class="row-total"><td>TOTAL</td><td></td>
       <td class="num">{total["orcamento"]}</td><td class="num">{total["ytd"]}</td>
+      <td class="num">{total["projecao"]}</td>
       <td class="num">{total["m3"]}</td>
       <td class="num{" pct-alto" if total.get("pct_alerta") else ""}">{total["pct"]}</td>
       <td class="num">{total["m2"]}</td><td></td><td></td></tr>
