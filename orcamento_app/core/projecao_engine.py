@@ -146,7 +146,8 @@ def natureza_da_conta(conta: str, ramo: str = RAMO_DESPESA) -> str:
         return EXCECOES_NATUREZA[conta]
     if conta.startswith("6.3.1.1"):
         return "PESSOAL"
-    if conta.startswith("6.3.1.3.02.03") or conta.startswith("6.3.1.3.02.04"):
+    if (conta.startswith("6.3.1.3.02.03") or conta.startswith("6.3.1.3.02.04")
+            or conta.startswith("6.3.1.3.02.06")):
         return "DIARIAS_PASSAGENS"
     if conta.startswith("6.3.1.3.02.01"):
         return "CONTRATOS"
