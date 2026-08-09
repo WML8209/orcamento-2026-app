@@ -212,11 +212,18 @@ def gerar_html_fechamento(grupos: list, total: dict) -> str:
     Conferência M2 | Diverg. | Confiança. 'grupos' e 'total' já vêm com valores formatados;
     flags 'pct_alerta', 'div_alerta' e 'confianca' controlam o destaque visual.
     """
+    # Colunas ordenáveis (Orçamento .. Conferência M2): chave usada em
+    # data-sort-<chave> == chave usada em ordenarFech() no JS abaixo.
+    COLS_ORDENAVEIS = ["orcamento", "ytd", "projecao", "m3", "pct", "m2"]
+
+    def _attrs_sort(d: dict) -> str:
+        return " ".join(f'data-sort-{c}="{d.get(c + "_raw", 0) or 0}"' for c in COLS_ORDENAVEIS)
+
     linhas_corpo = []
     for gi, g in enumerate(grupos):
         gid = f"n{gi}"
         linhas_corpo.append(
-            f'<tr id="{gid}" class="row-projeto" onclick="toggle(\'{gid}\')">'
+            f'<tr id="{gid}" class="row-projeto" onclick="toggle(\'{gid}\')" {_attrs_sort(g)}>'
             f'<td><span class="icon" data-toggle-icon="{gid}">−</span> {html.escape(str(g["rotulo"]))}'
             f' <span class="qtd">({len(g["contas"])})</span></td>'
             f'<td></td>'
@@ -230,7 +237,7 @@ def gerar_html_fechamento(grupos: list, total: dict) -> str:
             conf = str(c.get("confianca") or "")
             classe_conf = {"alta": "conf-alta", "media": "conf-media", "baixa": "conf-baixa"}.get(conf, "")
             linhas_corpo.append(
-                f'<tr class="row-conta" data-parent="{gid}">'
+                f'<tr class="row-conta" data-parent="{gid}" {_attrs_sort(c)}>'
                 f'<td class="indent1">{html.escape(str(c["conta"]))} — {html.escape(str(c["descricao"]))}</td>'
                 f'<td class="metodo">{html.escape(str(c.get("metodo") or ""))}</td>'
                 f'<td class="num">{c["orcamento"]}</td><td class="num">{c["ytd"]}</td>'
@@ -272,15 +279,21 @@ def gerar_html_fechamento(grupos: list, total: dict) -> str:
   span.qtd {{ font-weight: 400; color: #6b7787; }}
   .icon {{ display: inline-block; width: 14px; font-weight: 700; }}
   tr.row-total {{ background: #dfe6ee; font-weight: 700; }}
+  table.pivot th.sortable {{ cursor: pointer; user-select: none; white-space: nowrap; }}
+  table.pivot th.sortable:hover {{ background: #2d5fa8; }}
+  span.seta {{ font-size: 10px; }}
 </style>
 <div class="pivot-wrap">
 <table class="pivot">
   <thead><tr>
     <th>Natureza / Conta</th><th>Método</th>
-    <th class="num">Orçamento</th><th class="num">Realizado Acumulado</th>
-    <th class="num">Projeção</th>
-    <th class="num">Acumulado + Projeção</th><th class="num">% Exec</th>
-    <th class="num">Conferência M2</th><th class="num">Diverg.</th><th>Conf.</th>
+    <th class="num sortable" onclick="ordenarFech('orcamento')" title="Ordenar">Orçamento<span class="seta" id="seta-orcamento"></span></th>
+    <th class="num sortable" onclick="ordenarFech('ytd')" title="Ordenar">Realizado Acumulado<span class="seta" id="seta-ytd"></span></th>
+    <th class="num sortable" onclick="ordenarFech('projecao')" title="Ordenar">Projeção<span class="seta" id="seta-projecao"></span></th>
+    <th class="num sortable" onclick="ordenarFech('m3')" title="Ordenar">Acumulado + Projeção<span class="seta" id="seta-m3"></span></th>
+    <th class="num sortable" onclick="ordenarFech('pct')" title="Ordenar">% Exec<span class="seta" id="seta-pct"></span></th>
+    <th class="num sortable" onclick="ordenarFech('m2')" title="Ordenar">Conferência M2<span class="seta" id="seta-m2"></span></th>
+    <th class="num">Diverg.</th><th>Conf.</th>
   </tr></thead>
   <tbody>
     {"".join(linhas_corpo)}
@@ -312,6 +325,42 @@ def gerar_html_fechamento(grupos: list, total: dict) -> str:
     }});
   }}
   atualizarFech();
+
+  // Ordenação por coluna (Orçamento .. Conferência M2): clique alterna
+  // decrescente/crescente; grupos (Natureza) e suas contas são reordenados
+  // juntos, mantendo cada grupo contíguo e o TOTAL sempre no fim.
+  let ordemFechAtual = {{ coluna: null, asc: false }};
+  function ordenarFech(coluna) {{
+    const asc = (ordemFechAtual.coluna === coluna) ? !ordemFechAtual.asc : false;
+    ordemFechAtual = {{ coluna: coluna, asc: asc }};
+
+    const tbody = document.querySelector('table.pivot tbody');
+    const totalRow = tbody.querySelector('tr.row-total');
+    const grupos = Array.from(tbody.querySelectorAll('tr.row-projeto'));
+    const valor = function(tr) {{
+      const v = tr.getAttribute('data-sort-' + coluna);
+      return (v === null || v === '') ? 0 : parseFloat(v);
+    }};
+
+    const filhosPorGrupo = {{}};
+    grupos.forEach(function(g) {{
+      const filhos = Array.from(tbody.querySelectorAll('tr.row-conta[data-parent="' + g.id + '"]'));
+      filhos.sort(function(a, b) {{ return asc ? valor(a) - valor(b) : valor(b) - valor(a); }});
+      filhosPorGrupo[g.id] = filhos;
+    }});
+    grupos.sort(function(a, b) {{ return asc ? valor(a) - valor(b) : valor(b) - valor(a); }});
+
+    grupos.forEach(function(g) {{
+      tbody.insertBefore(g, totalRow);
+      filhosPorGrupo[g.id].forEach(function(tr) {{ tbody.insertBefore(tr, totalRow); }});
+    }});
+
+    document.querySelectorAll('span.seta').forEach(function(el) {{ el.textContent = ''; }});
+    const setaAtual = document.getElementById('seta-' + coluna);
+    if (setaAtual) {{ setaAtual.textContent = asc ? ' ▲' : ' ▼'; }}
+
+    atualizarFech();
+  }}
 </script>
 """
 
