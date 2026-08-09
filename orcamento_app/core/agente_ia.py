@@ -308,7 +308,7 @@ def _extrair_erro_api(resp: requests.Response) -> str:
 
 
 def _chamar_openrouter(mensagens: list, timeout: int = 60,
-                       max_tokens: int = 3000, temperature: float = 0.4) -> str:
+                       max_tokens: int = 8000, temperature: float = 0.4) -> str:
     if not config.OPENROUTER_API_KEY:
         raise AgenteIAError(
             "Chave da API do OpenRouter não configurada. Defina a variável de ambiente "
