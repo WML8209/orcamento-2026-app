@@ -91,7 +91,9 @@ def _atualizar_pela_api(anos: list[int], recalcular: bool) -> dict:
             status.update(label="Atualização falhou — nada foi importado", state="error")
             return desfecho
 
-        if recalcular:
+        if recalcular and codigo == 2:
+            log("\nProjeção NÃO recalculada: revise a divergência da reconciliação antes.")
+        elif recalcular:
             log("\nRecalculando a projeção (despesa e receita)...")
             try:
                 for ramo in (eng.RAMO_DESPESA, eng.RAMO_RECEITA):
@@ -138,7 +140,8 @@ def _mostrar_desfecho(desfecho: dict):
         st.success(msg)
     elif codigo == 2:
         st.warning("⚠ Importou, mas a reconciliação acusou divergência — revise a tabela "
-                   "`reconciliacao` no banco antes de usar a projeção.")
+                   "`reconciliacao` no banco antes de usar a projeção. A projeção **não** "
+                   "foi recalculada; depois de revisar, use **Recalcular** em Fechamento 2026.")
     else:
         st.error(f"✗ A atualização falhou (código {codigo}) e nada foi importado. "
                  "Veja o log acima e tente de novo em alguns minutos.")
