@@ -14,9 +14,16 @@ Faz, em sequência e com trava de segurança:
         2 = importou, mas a reconciliação acusou divergência (revisar!)
 
 Uso (na pasta orcamento_app, a mesma do importar_dados.py):
-    python atualizar_mensal.py
+    python atualizar_mensal.py --api                     # RECOMENDADO: busca só o CFC/ano
+                                                         # corrente direto na API (~10 s)
+    python atualizar_mensal.py                           # caminho antigo: scripts baixar_*.py
+                                                         # (27 conselhos x 5 anos, demorado)
     python atualizar_mensal.py --pular-download          # só reimporta os CSVs já baixados
     python atualizar_mensal.py --codigos-dir "C:\\...\\Códigos"
+
+Sem a pasta Códigos no computador (ex.: app publicado na nuvem), o caminho
+antigo não existe e a rotina usa a API automaticamente — é o que o botão
+"Atualizar dados agora" da tela Início faz.
 
 Seus overrides, métodos por conta e o reajuste da folha NÃO são apagados por
 este processo — o importador só substitui as tabelas de dados-base. Depois de
@@ -79,13 +86,58 @@ def tem_erro_no_log(texto):
     return any(p.search(texto) for p in PADROES_ERRO)
 
 
-def executar(pular_download: bool = False, codigos_dir: str | None = None) -> int:
+def executar_api(anos: list[int] | None = None, log=print,
+                 avisar_recalculo: bool = True) -> int:
+    """Caminho novo: busca só o conselho projetado, só nos `anos` pedidos
+    (padrão: o ano do orçamento), direto na API de dados abertos do CFC, e
+    importa em processo — sem CSV intermediário nem pasta Códigos. Devolve o
+    mesmo código de saída (0/1/2) do caminho antigo. `log` recebe cada linha
+    da narração (print por padrão; a tela Início passa o seu próprio)."""
+    aqui = Path(__file__).resolve().parent
+    if str(aqui) not in sys.path:
+        sys.path.insert(0, str(aqui))
+    from core import dados_reais, fonte_api  # noqa: E402
+    from core.config import ANO_ORCAMENTO  # noqa: E402
+
+    anos = sorted(anos or [ANO_ORCAMENTO])
+    log("=" * 70)
+    log(f"ATUALIZANDO PELA API DO CFC — anos {anos}")
+    log("=" * 70)
+    try:
+        resultado = dados_reais.importar_da_api(anos=anos, log=log)
+    except fonte_api.ErroAPI as e:
+        log("\nPAROU: a API do CFC não respondeu — NADA foi importado.")
+        log(f"  {e}")
+        log("  Tente de novo em alguns minutos (costuma ser falha isolada de rede).")
+        return 1
+    except Exception as e:  # noqa: BLE001 — qualquer outra falha também aborta
+        log(f"\nPAROU: erro inesperado na importação — {type(e).__name__}: {e}")
+        return 1
+
+    log("\n" + "=" * 70)
+    log("RESUMO")
+    log("=" * 70)
+    if resultado["reconciliacao_divergencias"]:
+        log("  ⚠ Importou, MAS a reconciliação acusou divergência.")
+        log("    Revise a tabela 'reconciliacao' no banco antes de usar a projeção.")
+        return 2
+    log("  ✔ Dados atualizados e reconciliação 100% OK.")
+    if avisar_recalculo:
+        log("  → Próximo passo: abra a tela Fechamento 2026 e RECALCULE a projeção")
+        log("    (seus overrides e métodos por conta continuam valendo).")
+    return 0
+
+
+def executar(pular_download: bool = False, codigos_dir: str | None = None,
+             usar_api: bool = False, anos: list[int] | None = None) -> int:
     """Roda a atualização mensal (downloads + importação + reconciliação) e
     devolve o código de saída (0/1/2 — ver docstring do módulo), sem chamar
     sys.exit. Toda a narração do processo sai por print(), para quem chamar
     poder capturá-la (ex.: redirect_stdout) ou deixá-la ir direto pro
     terminal. Reaproveitada tanto pelo CLI (main, abaixo) quanto pelo botão
-    "Rodar atualização mensal agora" da tela Início (Home.py)."""
+    do caminho antigo (CSVs) da tela Início (Home.py).
+
+    `usar_api=True` (ou a ausência da pasta Códigos) desvia para executar_api()."""
     if codigos_dir:
         os.environ["ORCAMENTO_CODIGOS_DIR"] = codigos_dir
 
@@ -98,13 +150,13 @@ def executar(pular_download: bool = False, codigos_dir: str | None = None) -> in
 
     py = sys.executable  # usa o mesmo Python que está rodando este script
 
+    if usar_api:
+        return executar_api(anos=anos)
+
     if not CODIGOS_DIR.exists():
-        cabecalho("PAROU: pasta de códigos não encontrada neste ambiente.")
-        print(f"  {CODIGOS_DIR} não existe aqui.")
-        print("  Downloads e importação dependem da pasta 'Códigos' do seu computador "
-              "(ver Orcamento2026.md) — por isso essa rotina só funciona rodando local, "
-              "não no app publicado na nuvem.")
-        return 1
+        print(f"Pasta de códigos não encontrada neste ambiente ({CODIGOS_DIR}).")
+        print("Usando a API de dados abertos do CFC diretamente (o mesmo que --api).\n")
+        return executar_api(anos=anos)
 
     # ---------- 1 e 2: downloads + conferência do log ----------
     if pular_download:
@@ -158,8 +210,16 @@ def main():
                     help="Não baixa nada; só reimporta os CSVs já presentes.")
     ap.add_argument("--codigos-dir", default=None,
                     help="Pasta com os CSVs (padrão: a mesma que o importador usa).")
+    ap.add_argument("--api", action="store_true",
+                    help="Busca direto na API do CFC (só o conselho projetado, ~10 s) "
+                         "em vez de rodar os scripts baixar_*.py.")
+    ap.add_argument("--anos", type=int, nargs="+", default=None,
+                    help="Anos a atualizar com --api (padrão: o ano do orçamento).")
     args = ap.parse_args()
-    sys.exit(executar(pular_download=args.pular_download, codigos_dir=args.codigos_dir))
+    if args.anos and not args.api:
+        ap.error("--anos só vale com --api (os CSVs sempre trazem todos os anos).")
+    sys.exit(executar(pular_download=args.pular_download, codigos_dir=args.codigos_dir,
+                      usar_api=args.api, anos=args.anos))
 
 
 if __name__ == "__main__":

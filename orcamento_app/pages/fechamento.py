@@ -68,8 +68,8 @@ mes_corte = int(df["mes_corte"].iloc[0])
 c_info, c_btn = st.columns([4, 1.2])
 with c_info:
     st.caption(f"Gerada em {gerado_em} — último mês completo considerado: "
-               f"**{MESES_PT[mes_corte]}/{ANO_ORCAMENTO}**. Para atualizar os dados, rode os "
-               "scripts `baixar_*.py` (pasta Códigos) e depois `python importar_dados.py`.")
+               f"**{MESES_PT[mes_corte]}/{ANO_ORCAMENTO}**. Para trazer meses novos, use o "
+               "botão **Atualizar dados agora** na tela Início (busca direto na API do CFC).")
 with c_btn:
     if st.button("🔄 Recalcular", use_container_width=True):
         _recalcular()

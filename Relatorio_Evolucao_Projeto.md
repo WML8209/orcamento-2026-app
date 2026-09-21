@@ -922,3 +922,63 @@ dados vindos da API.
 | `baixar_orçamentoatualizado.py` | Nenhum | — |
 | `baixar_plano_contas.py` | Anos desatualizados + nome de arquivo errado + campos de hierarquia inexistentes na API | Corrigido (17.5, 17.6) |
 | `baixar_saldoinicial.py` | Nenhum | — (mas também não é usado pelo pipeline) |
+
+## 18. Atualização direta pela API e botão "Atualizar dados agora" — Ago/2026 (21/09/2026)
+
+### 18.1 Pedido e diagnóstico
+
+Pedido do usuário: um botão na tela **Início** para atualizar os dados da aplicação, e a
+aplicação atualizada com o corte em **31/08/2026**. Já existia um botão "Rodar atualização
+mensal agora" (seção 17), mas ele dependia da pasta `DECONT/Códigos` e dos scripts
+`baixar_*.py` — 27 conselhos × 5 anos, ~700 MB, dezenas de minutos — e, por isso, ficava
+desabilitado no app publicado. Um esboço de consulta direta à API (`core/fonte_api.py` e a
+refatoração do importador em fontes `FonteCSV`/`FonteAPI`) estava começado e ainda não
+integrado às telas nem testado.
+
+### 18.2 O que foi feito
+
+- Concluída e testada a via API: `fonte_api.py` consulta só o CFC e só os anos pedidos;
+  o importador substitui apenas esses anos no banco (preservando 2022–2025) e funde o plano
+  de contas pelo `ano_ref` mais recente. Metadado `codigos_dir` é removido quando a fonte é
+  a API, para não sugerir uma origem que não participou.
+- `Home.py` reescrito na seção de atualização: linha "Dados atuais" (data máxima do Diário,
+  mês de corte, última importação e fonte), seleção de anos, opção de recalcular a projeção
+  dos dois ramos na sequência (ligada por padrão), botão **🔄 Atualizar dados agora** com log
+  ao vivo (`st.status`), reenvio de `dados_reais.db`/`projecao.db` ao Google Drive e mensagem
+  final com o novo corte. O caminho antigo (CSVs) virou um expansor, visível só onde a pasta
+  `Códigos` existe. A mensagem sobrevive ao `st.rerun()` via `session_state`, para que a
+  linha "Dados atuais" já apareça atualizada junto com o resultado.
+- `atualizar_mensal.py` e `importar_dados.py` ganharam `--api`/`--anos`; sem a pasta
+  `Códigos`, `atualizar_mensal.py` desvia para a API automaticamente.
+- Legenda da tela Fechamento passou a apontar para o botão novo; `README.md`,
+  `Checklist_Atualizacao_Mensal.md` e `Orcamento2026.md` atualizados.
+
+### 18.3 Validação (não hipotética — executada)
+
+1. **API × CSV**: a agregação conta × mês da API foi comparada com o banco importado dos CSVs
+   em 09/08 — janeiro a junho batem centavo a centavo (mesmas linhas, ΣD, ΣC e nº de
+   lançamentos). Confirmado de passagem que o caminho CSV inclui os estornos (`estorno = 'E'`):
+   sem eles, todos os meses divergiam. Julho difere apenas por lançamentos posteriores a 09/08.
+2. **Importação em cópia do banco** (`ORCAMENTO_DATA_DIR` apontando para uma pasta de teste):
+   2026 reimportado em 4 s, 2022–2025 intactos, reconciliação 100%.
+3. **Tela simulada** (`streamlit.testing.v1.AppTest`): página Início renderiza sem exceção,
+   clique no botão executa importação + recálculo + sincronização, mensagem verde com
+   "Diário 2026 até 10/09/2026 · último mês completo Ago/2026".
+4. **CLI** `python atualizar_mensal.py --api` na cópia de teste: código de saída 0.
+5. Só então a atualização foi aplicada ao banco real, **pelo próprio botão** (mesmo caminho
+   que o usuário vai usar), incluindo o reenvio ao Google Drive configurado.
+
+### 18.4 Resultado
+
+Diário CFC/2026 até 10/09/2026; setembro parcial, corte automático em **Ago/2026**.
+Despesa M3 R$ 124,25 mi (93,7%), Receita M3 R$ 113,79 mi (85,8%), **déficit projetado
+R$ 10,46 mi** (era R$ 6,83 mi em julho). Snapshot de referência em `snapshots/2026-09-21/`
+(Excel/PDF dos dois ramos + CSVs das tabelas), com comparação ao snapshot anterior.
+
+### 18.5 Pendências que continuam
+
+- Os três achados da revisão de código de 06/08 sobre o `reconfigure()` de encoding no
+  `atualizar_mensal.py` (registrados em `Alteracoes_Atualizacao_Mensal_2026-08-06.docx`)
+  seguem sem decisão — não foram tocados aqui.
+- Os pontos de atenção da projeção listados em `Analise_Projeção_JULHO.md` (Indenizações
+  extrapolada pelo sazonal, Representações, TI) continuam valendo com o corte em agosto.

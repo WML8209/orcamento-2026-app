@@ -76,8 +76,9 @@ Números-chave do CFC:
    por projeto (usada nas telas antigas do app) exigiria extração interna do SPW.
 3. O CSV de orçamento traz **Orçamento Inicial** (não o atualizado por
    suplementações) + Realizado na data do download.
-4. O Diário 2026 vai até 17/06/2026; para atualizar, basta rodar novamente os
-   scripts `baixar_*.py` da pasta Códigos e reimportar.
+4. O Diário 2026 ia até 17/06/2026 na primeira importação; para atualizar,
+   hoje basta o botão **Atualizar dados agora** da tela Início (busca direto
+   na API — ver seção "Atualização direta pela API", ao final).
 
 ## 5. Modelo de projeção adotado
 
@@ -139,7 +140,8 @@ core/dados_reais.py  ──►  data/dados_reais.db  (SQLite compacto, só CFC a
 
 ```bash
 # 1. Importar/atualizar os dados reais (na pasta orcamento_app):
-python importar_dados.py                # usa DECONT/Códigos e conselho CFC
+python importar_dados.py --api          # RECOMENDADO: CFC/ano corrente direto da API (~10 s)
+python importar_dados.py                # caminho antigo: CSVs de DECONT/Códigos, conselho CFC
 python importar_dados.py --conselho CFC --codigos-dir "C:\...\Códigos"
 
 # 2. Rodar o app (telas de projeção virão nas próximas etapas):
@@ -549,3 +551,66 @@ scripts de download, este é o único sem nenhum problema encontrado.
 | `baixar_orçamentoatualizado.py` | Sim (`orcamento_anual`) | Nenhum | Executado, sem alteração |
 | `baixar_plano_contas.py` | Sim (`plano_contas_real`) | Anos desatualizados + nome de arquivo errado + hierarquia de grupos inexistente na API | Corrigido e executado |
 | `baixar_saldoinicial.py` | Não (desconectado do pipeline) | Nenhum | Executado só para conferência |
+
+## Atualização direta pela API — botão "Atualizar dados agora" (21/09/2026)
+
+### Motivação
+
+Até aqui o único caminho para trazer um mês novo era rodar os scripts
+`baixar_*.py` da pasta `DECONT/Códigos`: 27 conselhos × 5 anos, ~700 MB de
+CSV, dezenas de minutos — e 26/27 do que era baixado ia fora no primeiro
+filtro (`Conselho == 'CFC'`). Além de lento, isso prendia a atualização ao
+computador que tem a pasta `Códigos`: no app publicado (Streamlit Cloud) o
+botão da tela Início ficava desabilitado.
+
+### O que mudou
+
+- **`core/fonte_api.py` (novo)** — consulta a mesma API de dados abertos do
+  CFC (`DiarioCompleto/`, `orcamento/`, `planoContas/`, conselho e ano por
+  cabeçalho HTTP) **só para o conselho projetado**, devolvendo DataFrames com
+  as mesmas colunas dos CSVs. Três tentativas com espera crescente; qualquer
+  ano que não venha é erro fatal (`ErroAPI`), nunca "um ano a menos" — a
+  lição do incidente CFC/2022. O Diário CFC/2026 inteiro vem em ~3 s (~25 MB).
+- **`core/dados_reais.py`** — o importador passou a receber uma *fonte*
+  (`FonteCSV` ou `FonteAPI`) e trata as duas pelo mesmo caminho de agregação,
+  reconciliação e gravação. A `FonteAPI` declara os anos que traz, e a
+  importação **substitui só esses anos** no banco (`_limpar`), preservando
+  2022–2025 já importados; o plano de contas é fundido preferindo o
+  `ano_ref` mais recente, para não perder contas extintas que ainda
+  descrevem lançamentos antigos. Lançamentos datados fora dos anos pedidos
+  são ignorados com aviso (evita conflito de chave primária).
+- **`Home.py`** — nova seção "Atualização dos dados reais": linha **Dados
+  atuais** (data máxima do Diário, mês de corte, quando/por qual fonte foi
+  importado), seleção de anos (padrão: só o corrente; todos, se o banco não
+  existe), opção **recalcular a projeção dos dois ramos** (ligada por padrão)
+  e o botão **🔄 Atualizar dados agora**, que narra o processo ao vivo num
+  `st.status`, reenvia `dados_reais.db`/`projecao.db` ao Google Drive e
+  termina dizendo até que data o Diário foi e qual passou a ser o corte. O
+  caminho antigo (CSVs) ficou num expansor, só onde a pasta `Códigos` existe.
+- **`atualizar_mensal.py` / `importar_dados.py`** — ganharam `--api` (e
+  `--anos`); sem a pasta `Códigos`, `atualizar_mensal.py` usa a API sozinho.
+- **`pages/fechamento.py`** — a legenda do cabeçalho aponta para o botão novo.
+
+### Validação antes de aplicar
+
+A agregação conta × mês obtida pela API foi comparada com a que estava no
+banco (importada dos CSVs em 09/08/2026): **janeiro a junho de 2026 batem
+centavo a centavo** — mesmas 1.982 linhas, mesmos ΣD/ΣC e nº de lançamentos.
+Isso também confirmou que o caminho CSV **inclui** os lançamentos marcados
+como estorno (`estorno = 'E'`): sem eles, todo mês divergia. Julho só difere
+pelos lançamentos registrados depois de 09/08 (5.367 → 5.636). Reconciliação
+2022–2025 continuou 100% após a importação parcial (só 2026).
+
+### Resultado da atualização de 21/09/2026 (corte Ago/2026)
+
+Diário CFC/2026 até **10/09/2026** (48.707 lançamentos); setembro parcial
+(dia 10 < 28), então o corte automático avançou de Jul para **Ago/2026**.
+
+| | Orçamento | YTD (jan-ago) | Fechamento M3 | M2 | % |
+|---|---:|---:|---:|---:|---:|
+| Despesa | 132,6 mi | 73,4 mi | **124,3 mi** | 128,1 mi | 93,7% |
+| Receita | 132,6 mi | 90,2 mi | **113,8 mi** | 117,4 mi | 85,8% |
+
+**Resultado orçamentário projetado: déficit de R$ 10,46 milhões** (era
+R$ 6,83 mi com corte em julho — ver `snapshots/2026-09-21/README.md` para a
+comparação por natureza). Snapshot completo em `snapshots/2026-09-21/`.

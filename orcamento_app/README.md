@@ -25,9 +25,13 @@ enquanto usa. Para fechar, feche o terminal ou aperte `Ctrl+C`.
 
 ## Onde ficam os dados
 
-Tudo dentro da pasta `data/`. A tela **Início** do app mostra o status de
-cada um desses arquivos e permite enviar/substituir qualquer um deles direto
-pela interface (útil sobretudo depois de publicar o app na nuvem).
+Tudo dentro da pasta `data/`. A tela **Início** do app tem o botão
+**🔄 Atualizar dados agora**, que busca o ano corrente direto na API de dados
+abertos do CFC, reimporta o `dados_reais.db`, recalcula a projeção e reenvia
+os bancos ao Google Drive (ver `Checklist_Atualizacao_Mensal.md` na raiz do
+repositório). A mesma tela mostra o status de cada arquivo de dados e permite
+enviar/substituir qualquer um deles direto pela interface (útil sobretudo
+depois de publicar o app na nuvem).
 
 Opcionalmente, esses 5 arquivos podem ser sincronizados automaticamente com
 uma pasta **Data** no seu Google Drive — resolve a perda de dados quando o
@@ -37,7 +41,7 @@ app funciona normalmente só com o disco local.
 
 | Arquivo | O que é | Como atualizar |
 |---|---|---|
-| `dados_reais.db` | Banco SQLite com o orçamento e o executado reais do CFC (dados-base, descartável — regenerado por inteiro a cada reimport) | Gerado localmente por `python importar_dados.py` (ver Orcamento2026.md). Depois é só enviar o arquivo pela tela Início ou substituir em `data/`. |
+| `dados_reais.db` | Banco SQLite com o orçamento e o executado reais do CFC (dados-base, descartável — os anos reimportados são regenerados a cada atualização) | Botão **Atualizar dados agora** da tela Início (API do CFC), ou `python importar_dados.py --api` / `python atualizar_mensal.py --api`. O caminho antigo pelos CSVs da pasta Códigos (`python importar_dados.py`) continua disponível (ver Orcamento2026.md). |
 | `projecao.db` | Banco SQLite da tela **Fechamento 2026**: método por conta, "Fechamento Manual" e a última projeção calculada — nunca tocado pelo reimport | Gerado/atualizado pela própria tela (configurar conta, Recalcular). Separado do `dados_reais.db` de propósito, para nunca ser apagado por uma atualização mensal. |
 | `bases.xlsx` | Abas fixas de referência (Datas, PlanoDeContas, Projetos, SubProjetos, PCA2025, ListaContratos, ParametrosDiaria, Diario) | Legado do sistema anterior — hoje não é lido por nenhuma tela ativa. |
 | `orcamento_historico.xlsx` | Orçamento fixo de anos anteriores a 2026 | Legado do sistema anterior — hoje não é lido por nenhuma tela ativa. |
@@ -69,15 +73,17 @@ receita) e o modelo de conferência M2 estão documentados em
 ## Estrutura do código
 
 ```
-Home.py                -> tela inicial: status e upload dos arquivos de dados
-importar_dados.py      -> CLI: importa os CSVs da API do CFC para data/dados_reais.db
+Home.py                -> tela inicial: botão "Atualizar dados agora" (API do CFC), status e upload dos arquivos de dados
+importar_dados.py      -> CLI: importa para data/dados_reais.db (CSVs da pasta Códigos, ou --api)
+atualizar_mensal.py    -> CLI: rotina mensal completa (--api recomendado; sem ele, scripts baixar_*.py + CSVs)
 projetar_fechamento.py -> CLI: roda a projeção e imprime o relatório no terminal
 pages/
   fechamento.py         -> tela Fechamento 2026
 core/
   config.py             -> caminhos dos arquivos (edite aqui se mudar a pasta de dados)
   db.py                 -> banco SQLite orcamento2026.db (criado automaticamente)
-  dados_reais.py        -> importador dos CSVs do CFC para dados_reais.db
+  dados_reais.py        -> importador para dados_reais.db; duas fontes (FonteCSV / FonteAPI), mesma agregação e reconciliação
+  fonte_api.py          -> consulta direta à API de dados abertos do CFC (só o conselho projetado, por ano)
   projecao_engine.py    -> motor de projeção (M3 híbrido por natureza + conferência M2); lê dados_reais.db, grava config/resultado em projecao.db
   exportar.py           -> geração de PDF e Excel da Projeção de Fechamento
   tabela_html.py         -> renderização das tabelas HTML da tela Fechamento 2026
