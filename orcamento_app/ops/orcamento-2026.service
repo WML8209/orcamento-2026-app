@@ -1,0 +1,16 @@
+[Unit]
+Description=Orcamento 2026 Streamlit application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/projetos/orc2026/orcamento_app
+ExecStart=/opt/projetos/orc2026/.venv/bin/streamlit run Home.py --server.headless true --server.address 0.0.0.0 --server.port 8501
+Restart=on-failure
+RestartSec=10
+KillSignal=SIGINT
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

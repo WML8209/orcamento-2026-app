@@ -23,6 +23,21 @@ Isso abre automaticamente uma aba no seu navegador (endereço tipo
 `http://localhost:8501`). É o app "rodando" — pode deixar o terminal aberto
 enquanto usa. Para fechar, feche o terminal ou aperte `Ctrl+C`.
 
+### Servidor Linux
+
+Neste servidor, o app é gerenciado pelo systemd usando
+[`ops/orcamento-2026.service`](ops/orcamento-2026.service). Para consultar ou
+reiniciar o serviço:
+
+```
+sudo systemctl status orcamento-2026
+sudo systemctl restart orcamento-2026
+```
+
+O nginx publica o app em `https://orc.167.88.33.108.sslip.io` (HTTPS via Certbot)
+(config em [`ops/nginx-orcamento-2026.conf`](ops/nginx-orcamento-2026.conf),
+instalada em `/etc/nginx/sites-available/orcamento-2026`).
+
 ## Onde ficam os dados
 
 Tudo dentro da pasta `data/`. A tela **Início** do app tem o botão
