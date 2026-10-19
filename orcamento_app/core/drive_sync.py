@@ -21,6 +21,7 @@ import io
 from pathlib import Path
 
 import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
 
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 NOME_PASTA = "Data"
@@ -38,7 +39,10 @@ ARQUIVOS_SINCRONIZADOS = [
 
 
 def esta_configurado() -> bool:
-    return "gdrive" in st.secrets
+    try:
+        return "gdrive" in st.secrets
+    except StreamlitSecretNotFoundError:
+        return False
 
 
 def _obter_pasta_data(service) -> str:

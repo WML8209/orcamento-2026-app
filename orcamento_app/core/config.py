@@ -21,6 +21,7 @@ from pathlib import Path
 import os
 
 import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
 
 # Pasta onde ficam os arquivos de dados. Pode ser trocada por uma pasta
 # do OneDrive/Google Drive sincronizada, se você quiser acessar de mais
@@ -64,6 +65,11 @@ CONSELHO_PADRAO = "CFC"
 # (validada em tempo de uso por core/agente_ia.py, não aqui). Prioridade:
 # variável de ambiente OPENROUTER_API_KEY e, se não definida, st.secrets
 # (orcamento_app/.streamlit/secrets.toml — nunca commitado, ver .gitignore).
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY") or st.secrets.get("OPENROUTER_API_KEY", "")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+if not OPENROUTER_API_KEY:
+    try:
+        OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY", "")
+    except StreamlitSecretNotFoundError:
+        OPENROUTER_API_KEY = ""
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-v4-flash-0731")
 OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
