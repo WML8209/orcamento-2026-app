@@ -58,6 +58,18 @@ CREATE TABLE IF NOT EXISTS projecao_parametros (
     valor TEXT
 );
 
+-- Acréscimos pontuais: despesa/receita extraordinária conhecida, somada à
+-- projeção da conta (qualquer método) num mês específico.
+CREATE TABLE IF NOT EXISTS projecao_acrescimo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conselho TEXT NOT NULL,
+    ano INTEGER NOT NULL,
+    conta TEXT NOT NULL,
+    mes INTEGER NOT NULL,
+    valor REAL NOT NULL,
+    descricao TEXT
+);
+
 CREATE TABLE IF NOT EXISTS projecao_resultado (
     gerado_em TEXT,
     conselho TEXT NOT NULL,
@@ -380,6 +392,13 @@ def _config_conta(conn, conselho: str, conta: str) -> dict:
     return cfg
 
 
+def _acrescimos_conta(conn, conselho: str, ano: int, conta: str) -> list[tuple]:
+    return conn.execute(
+        """SELECT mes, valor, descricao FROM projecao_acrescimo
+           WHERE conselho = ? AND ano = ? AND conta = ? ORDER BY mes, id""",
+        (conselho, ano, conta)).fetchall()
+
+
 def projetar_fechamento(conselho: str = CONSELHO_PADRAO, ano: int = ANO_ORCAMENTO,
                         mes_corte: int | None = None, persistir: bool = True,
                         ramo: str = RAMO_DESPESA) -> list[ProjecaoConta]:
@@ -474,6 +493,24 @@ def projetar_fechamento(conselho: str = CONSELHO_PADRAO, ano: int = ANO_ORCAMENT
             if natureza == "CAPITAL" and metodo != "override":
                 conf = "baixa"
                 memoria += " [CAPITAL: projeção estatística é frágil — informar cronograma via Fechamento Manual.]"
+
+            # --- Acréscimos pontuais: somados ao M3 e ao M2 (evento conhecido,
+            # não estatístico — não deve acender divergência) ---
+            acrescimos = _acrescimos_conta(conn, conselho, ano, conta)
+            if acrescimos:
+                restante = dict(restante)
+                partes = []
+                for mes_acr, valor_acr, desc_acr in acrescimos:
+                    if mes_acr <= mes_corte:
+                        partes.append(f"{desc_acr or 'acréscimo'} R$ {_fmt(valor_acr)} em "
+                                      f"{mes_acr:02d} IGNORADO (mês já realizado)")
+                        continue
+                    restante[mes_acr] = restante.get(mes_acr, 0.0) + valor_acr
+                    fechamento += valor_acr
+                    m2 += valor_acr
+                    partes.append(f"{desc_acr or 'acréscimo'} +R$ {_fmt(valor_acr)} em {mes_acr:02d}")
+                memoria += (f" Acréscimos pontuais: {'; '.join(partes)}. "
+                            f"Fechamento com acréscimos = R$ {_fmt(fechamento)}.")
 
             divergencia = abs(fechamento - m2) / max(abs(m2), 1.0)
             resultados.append(ProjecaoConta(
@@ -597,6 +634,39 @@ def remover_config_conta(conta: str, conselho: str = CONSELHO_PADRAO):
     try:
         conn.execute("DELETE FROM projecao_config WHERE conselho = ? AND conta = ?",
                      (conselho, conta))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def carregar_acrescimos(conselho: str = CONSELHO_PADRAO, ano: int = ANO_ORCAMENTO,
+                        ramo: str | None = None) -> pd.DataFrame:
+    conn = get_conn()
+    try:
+        return pd.read_sql_query(
+            """SELECT id, conta, mes, valor, descricao FROM projecao_acrescimo
+               WHERE conselho = ? AND ano = ? AND conta LIKE ? || '%' ORDER BY conta, mes, id""",
+            conn, params=(conselho, ano, ramo or ""))
+    finally:
+        conn.close()
+
+
+def salvar_acrescimo(conta: str, mes: int, valor: float, descricao: str,
+                     conselho: str = CONSELHO_PADRAO, ano: int = ANO_ORCAMENTO):
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO projecao_acrescimo (conselho, ano, conta, mes, valor, descricao)
+               VALUES (?, ?, ?, ?, ?, ?)""", (conselho, ano, conta, int(mes), float(valor), descricao))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def remover_acrescimo(id_: int):
+    conn = get_conn()
+    try:
+        conn.execute("DELETE FROM projecao_acrescimo WHERE id = ?", (int(id_),))
         conn.commit()
     finally:
         conn.close()

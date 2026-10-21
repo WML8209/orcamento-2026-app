@@ -455,3 +455,42 @@ with c_remover:
         eng.remover_config_conta(conta_sel)
         _recalcular()
         st.rerun()
+
+# --- Acréscimos pontuais (despesa/receita extraordinária num mês específico) ---
+st.divider()
+st.subheader("➕ Acréscimos pontuais")
+st.caption("Valor extraordinário já conhecido (evento, viagem, repasse...) somado à projeção da "
+           "conta, qualquer que seja o método, no mês informado. Só vale para meses ainda não "
+           "realizados.")
+acrescimos = eng.carregar_acrescimos(ramo=ramo)
+if not acrescimos.empty:
+    desc_contas = dict(zip(df["conta"], df["descricao"]))
+    for _, a in acrescimos.iterrows():
+        c1, c2 = st.columns([6, 1])
+        c1.markdown(f"`{a['conta']}` {desc_contas.get(a['conta'], '')} — "
+                    f"**R$ {fmt_num_br(a['valor'])}** em {MESES_PT[int(a['mes'])]} — "
+                    f"{a['descricao'] or ''}")
+        if c2.button("🗑️", key=f"rm_acr_{a['id']}", help="Remover acréscimo"):
+            eng.remover_acrescimo(a["id"])
+            _recalcular()
+            st.rerun()
+    st.caption(f"Total de acréscimos: **R$ {fmt_num_br(acrescimos['valor'].sum())}**")
+
+with st.form("novo_acrescimo", clear_on_submit=True):
+    c1, c2, c3 = st.columns([3, 1, 1])
+    conta_acr = c1.selectbox("Conta", contas_opts, format_func=lambda c: rotulos[c])
+    meses_futuros = list(range(mes_corte + 1, 13)) or [12]
+    mes_acr = c2.selectbox("Mês", meses_futuros, index=len(meses_futuros) - 1,
+                           format_func=lambda m: MESES_PT[m])
+    valor_acr_txt = c3.text_input("Valor (R$)", placeholder="0,00")
+    desc_acr = st.text_input("Descrição (obrigatória)")
+    if st.form_submit_button("➕ Incluir acréscimo e recalcular"):
+        valor_acr = parse_valor_br(valor_acr_txt)
+        if not valor_acr:
+            st.error("Informe o valor do acréscimo.")
+        elif not desc_acr.strip():
+            st.error("A descrição é obrigatória.")
+        else:
+            eng.salvar_acrescimo(conta_acr, mes_acr, valor_acr, desc_acr.strip())
+            _recalcular()
+            st.rerun()
